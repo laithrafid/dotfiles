@@ -1,0 +1,8 @@
+# This is Git's per-user configuration file.
+[user]
+# Please adapt and uncomment the following lines:
+	name = Laith Rafid 
+	email = laith.rafid@gmail.com
+[core]
+	editor = vim
+	excludesfile = /root/.gitignore
