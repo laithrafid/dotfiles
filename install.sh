@@ -1,4 +1,4 @@
-#!/usr/env sh
+#!/bin/bash
 
 INSTALLDIR=${INSTALLDIR:-"$PWD/dotfiles"}
 create_symlinks () {
@@ -10,17 +10,20 @@ create_symlinks () {
     if [ ! -f ~/.vimrc ]; then
         ln -sfn $INSTALLDIR/vimrc ~/.vimrc
     fi
-    
+
     if [ ! -f ~/.conf.tmux ]; then
         ln -sfn $INSTALLDIR/tmux.conf ~/.tmux.conf
     fi
-    
+
     if [ ! -f ~/.profile ]; then
         ln -sfn $INSTALLDIR/bash_profile ~/.profile
     fi
-    
+
     if [ ! -f ~/.bash_profile ]; then
         ln -sfn $INSTALLDIR/bash_profile ~/.bash_profile
+    fi
+    if [ ! -f ~/.inputrc ]; then
+        ln -sfn $INSTALLDIR/inputrc ~/.inputrc
     fi
 }
 
@@ -47,7 +50,7 @@ fi
 
 if [ ! -d "$INSTALLDIR" ]; then
     echo "As we can't find configs in the current directory, we will create it."
-    git clone https://gitlab.com/laith.rafid/dotfiles.git $INSTALLDIR
+    git clone https://github.com/laith.rafid/dotfiles.git $INSTALLDIR
     create_symlinks
     cd $INSTALLDIR
 
