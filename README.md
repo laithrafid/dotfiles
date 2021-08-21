@@ -4,7 +4,7 @@
 
 Copy/Paste this line in your CLI:
 
-    curl -L  https://gist.github.com/laithrafid/b54e36c56026c218337b38ed60e1fe25 | sh
+    curl -L  https://raw.githubusercontent.com/laithrafid/dotfiles/main/install.sh  | sh
 
 ### For those who actually care about what is done
 
