@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 INSTALLDIR=${INSTALLDIR:-"$PWD/dotfiles"}
 create_symlinks () {
