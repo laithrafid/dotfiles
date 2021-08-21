@@ -27,8 +27,6 @@
 #   Set Paths
 #   ------------------------------------------------------------
     export PATH="$PATH:/usr/local/bin/"
-    export PATH="/usr/local/git/bin:/sw/bin/:/usr/local/bin:/usr/local/:/usr/local/sbin:$PATH"
-
 #   Set default blocksize for ls, df, du
 #   from this: http://hints.macworld.com/comment.php?mode=view&cid=24491
 #   ------------------------------------------------------------
