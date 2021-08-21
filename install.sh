@@ -27,6 +27,9 @@ create_symlinks () {
     fi
 }
 
+echo "sourcing new config"
+source ~/.bash_profile
+
 echo "You are about to be configs. Ready? Let us do the stuff for you."
 
 which git > /dev/null
