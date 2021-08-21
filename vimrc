@@ -1,8 +1,4 @@
 " vimrc
-
-
-"
-"
 set nocompatible
 filetype on
 filetype off
