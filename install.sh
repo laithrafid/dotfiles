@@ -50,7 +50,7 @@ fi
 
 if [ ! -d "$INSTALLDIR" ]; then
     echo "As we can't find configs in the current directory, we will create it."
-    git clone https://github.com/laith.rafid/dotfiles.git $INSTALLDIR
+    git clone git@github.com:laithrafid/dotfiles.git $INSTALLDIR
     create_symlinks
     cd $INSTALLDIR
 
