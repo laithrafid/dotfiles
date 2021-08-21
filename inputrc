@@ -1,5 +1,9 @@
 # /etc/inputrc - global inputrc for libreadline
 # See readline(3readline) and `info rluserman' for more information.
+$include /etc/inputrc
+
+"\C-p":history-search-backward
+"\C-n":history-search-forward
 
 # Be 8 bit clean.
 set input-meta on
@@ -63,5 +67,13 @@ $endif
 # for freebsd console
 # "\e[H": beginning-of-line
 # "\e[F": end-of-line
+
+set colored-stats On
+set completion-ignore-case On
+set completion-prefix-display-length 3
+set mark-symlinked-directories On
+set show-all-if-ambiguous On
+set show-all-if-unmodified On
+set visible-stats On
 
 $endif
