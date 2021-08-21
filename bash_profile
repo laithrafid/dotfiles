@@ -290,6 +290,5 @@ alias cleanupDS="find . -type f -name '*.DS_Store' -ls -delete"
 #   the above create files that are almost all zeros - if random bytes are desired
 #   then use: ~/Dev/Perl/randBytes 1048576 > 10MB.dat
 # to be used after installing with brew to solve issues with Mac Builtin vim
-alias vim='/usr/local/bin/vim'
 test -e "${HOME}/.iterm2_shell_integration.bash" && source "${HOME}/.iterm2_shell_integration.bash"
 
