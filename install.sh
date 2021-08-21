@@ -12,9 +12,6 @@ create_symlinks () {
         ln -sfn $INSTALLDIR/bash_profile ~/.profile
     fi
 
-    if [ ! -f ~/.inputrc ]; then
-        ln -sfn $INSTALLDIR/inputrc ~/.inputrc
-    fi
 }
 
 echo "You are about to config vim , tmux , your bash profile and inputrc file. Ready? Let us do some stuff for you."
@@ -55,10 +52,10 @@ else
     create_symlinks
     source ~/.profile
 fi
-    if [ ! -f ~/.bashrc ]; then
+if [ ! -f ~/.bashrc ]; then
     echo "if [ -f ~/.profile ]; then . ~/.profile ; fi" >> ~/.bashrc
     source ~/.bashrc
-    fi
+fi
 
 
 

@@ -292,3 +292,19 @@ alias cleanupDS="find . -type f -name '*.DS_Store' -ls -delete"
 # to be used after installing with brew to solve issues with Mac Builtin vim
 test -e "${HOME}/.iterm2_shell_integration.bash" && source "${HOME}/.iterm2_shell_integration.bash"
 
+#-------------------------------------------#
+#--          binds from Inputrc           --#
+#-------------------------------------------#
+
+bind '"\e[A": history-search-backward'
+bind '"\e[B": history-search-forward'
+
+# alternate mappings for "page up" and "page down" to search the history
+bind '"\e[5~": history-search-backward'
+bind '"\e[6~": history-search-forward'
+
+# allow the use of the Home/End keys
+bind '"\e[1~": beginning-of-line'
+bind '"\e[4~": end-of-line'
+
+
