@@ -1,15 +1,8 @@
 #!/usr/bin/env sh
 
-INSTALLDIR=${INSTALLDIR:-"$PWD/dotfiles"}
-create_symlinks () {
-    if [ ! -f ~/.vim ]; then
-        echo "Now, we will create ~/.vim and ~/.vimrc files to configure Vim."
-        ln -sfn $INSTALLDIR ~/.vim
-    fi
+INSTALLDIR=${INSTALLDIR:-"$PWD/dotfiles/"}
 
-    if [ ! -f ~/.vimrc ]; then
-        ln -sfn $INSTALLDIR/vimrc ~/.vimrc
-    fi
+create_symlinks () {
 
     if [ ! -f ~/.conf.tmux ]; then
         ln -sfn $INSTALLDIR/tmux.conf ~/.tmux.conf
@@ -19,9 +12,6 @@ create_symlinks () {
         ln -sfn $INSTALLDIR/bash_profile ~/.profile
     fi
 
-    if [ ! -f ~/.bash_profile ]; then
-        ln -sfn $INSTALLDIR/bash_profile ~/.bash_profile
-    fi
     if [ ! -f ~/.inputrc ]; then
         ln -sfn $INSTALLDIR/inputrc ~/.inputrc
     fi
@@ -55,7 +45,7 @@ if [ ! -d "$INSTALLDIR" ]; then
     git clone git@github.com:laithrafid/dotfiles.git $INSTALLDIR
     create_symlinks
     echo "sourcing new config"
-    source ~/.bash_profile
+    source ~/.profile
     cd $INSTALLDIR
 
 else
@@ -63,29 +53,12 @@ else
     cd $INSTALLDIR
     git pull origin main
     create_symlinks
+    source ~/.profile
 fi
-
-if [ ! -d "bundle" ]; then
-    echo "Now, we will create a separate directory to store the bundles Vim will use."
-    mkdir bundle
-    mkdir -p tmp/backup tmp/swap tmp/undo
-fi
-
-if [ ! -d "bundle/vundle" ]; then
-    echo "Then, we install Vundle (https://github.com/gmarik/vundle)."
-    git clone https://github.com/gmarik/vundle.git bundle/vundle
-fi
-
-if [ ! -f local.vimrc ]; then
-  echo "Let's create a 'local.vimrc' file so you have some bundles by default."
-  echo "let g:configs_packages = ['general', 'fancy', 'css', 'js', 'os', 'html', 'coding', 'color']" > 'local.vimrc'
-fi
-
     if [ ! -f ~/.bashrc ]; then
-    echo "if [ -f ~/.bash_profile ]; then . ~/.bash_profile ; fi" >> ~/.bashrc
+    echo "if [ -f ~/.profile ]; then . ~/.profile ; fi" >> ~/.bashrc
     source ~/.bashrc
     fi
 
 
-vim +BundleInstall +qall 2>/dev/null
 
