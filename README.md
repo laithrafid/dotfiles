@@ -4,14 +4,14 @@
 
 Copy/Paste this line in your CLI:
 
-    curl -L  https://gitlab.com/laith.rafid/dotfiles/raw/master/install.sh | sh
+    curl -L  https://github.com/laith.rafid/dotfiles/raw/master/install.sh | sh
 
 ### For those who actually care about what is done
 
 Grab the project:
 
     cd
-    git clone https://gitlab.com/laith.rafid/dotfiles.git
+    git clone https://github.com/laith.rafid/dotfiles.git
     ln -sfn configs/ ~/.vim
     ln -sfn configs/vimrc ~/.vimrc
     cd configs
