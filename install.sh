@@ -27,24 +27,23 @@ create_symlinks () {
     fi
 }
 
-echo "sourcing new config"
-source ~/.bash_profile
+echo "You are about to config vim , tmux , your bash profile and inputrc file. Ready? Let us do some stuff for you."
 
-echo "You are about to be configs. Ready? Let us do the stuff for you."
-
+echo "checking if git exist"
 which git > /dev/null
 if [ "$?" != "0" ]; then
   echo "You need git installed to install configs."
   exit 1
 fi
 
+echo "checking if vim exist"
 which vim > /dev/null
 if [ "$?" != "0" ]; then
   echo "You need vim installed to install configs."
   exit 1
 fi
 
-
+echo "checking if tmux exist"
 which tmux > /dev/null
 if ["$?" != "0" ]; then
     echo "you need to install tmux"
@@ -52,15 +51,17 @@ if ["$?" != "0" ]; then
 fi
 
 if [ ! -d "$INSTALLDIR" ]; then
-    echo "As we can't find configs in the current directory, we will create it."
+    echo "could't find dotfiles config in the current directory, we will clone from remote repo"
     git clone git@github.com:laithrafid/dotfiles.git $INSTALLDIR
     create_symlinks
+    echo "sourcing new config"
+    source ~/.bash_profile
     cd $INSTALLDIR
 
 else
     echo "upgrade to new configs"
     cd $INSTALLDIR
-    git pull origin master
+    git pull origin main
     create_symlinks
 fi
 
