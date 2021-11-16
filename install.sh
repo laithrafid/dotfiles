@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-INSTALLDIR=${INSTALLDIR:-"$PWD/dotfiles/"}
+INSTALLDIR=${INSTALLDIR:-"$PWD/dotfiles"}
 
 create_symlinks () {
 
