@@ -26,7 +26,7 @@
 
 #   Set Paths
 #   ------------------------------------------------------------
-    export PATH="/usr/local/bin/:$PATH"
+    export PATH="/usr/local/bin/:/usr/local/clamav/bin:$PATH"
 #   Set default blocksize for ls, df, du
 #   from this: http://hints.macworld.com/comment.php?mode=view&cid=24491
 #   ------------------------------------------------------------
@@ -39,6 +39,8 @@
    export CLICOLOR=1
 
    export LSCOLORS=ExFxBxDxCxegedabagacad
+# History File increase limit to 2000 lines   
+ HISTFILESIZE=2000
 
 
 #   -----------------------------
