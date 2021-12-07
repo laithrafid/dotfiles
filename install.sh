@@ -7,16 +7,7 @@ IFS=$'\n\t'
 # https://github.com/why-jay/osx-init/blob/master/install.sh
 # https://github.com/timsutton/osx-vm-templates/blob/master/scripts/xcode-cli-tools.sh
 # https://codeberg.org/lotharschulz/gists/src/branch/main/osx_bootstrap.sh
-# PRECONDITIONS
-# 1)
-# make sure the file is executable
-# chmod +x osx_bootstrap.sh
-#
-# 2)
-# Your password may be necessary for some packages
-#
-# 3)
-# https://docs.brew.sh/Installation#macos-requirements
+# you may have to enter your password 
 
 install_xcode(){
 echo "Checking Xcode CLI tools"
