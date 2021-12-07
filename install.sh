@@ -1,4 +1,6 @@
 #!/usr/bin/env sh
+set -euo pipefail
+IFS=$'\n\t'
 
 # inspired by
 # https://gist.github.com/codeinthehole/26b37efa67041e1307db
@@ -16,6 +18,7 @@
 # 3)
 # https://docs.brew.sh/Installation#macos-requirements
 
+install_xcode(){
 echo "Checking Xcode CLI tools"
 # Only run if the tools are not installed yet
 # To check that try to print the SDK path
@@ -31,12 +34,9 @@ if [ $? -ne 0 ]; then
 else
   echo "Xcode CLI tools OK"
 fi
-
+}
 
 INSTALLDIR=${INSTALLDIR:-"~/.dotfiles"}
-
-set -euo pipefail
-IFS=$'\n\t'
 SUDO_USER=$(whoami)
 PACKAGES=(
     bash-completionbrew-cask-completion
@@ -59,6 +59,7 @@ PACKAGES=(
     boot2docker
     ffmpeg
     fx
+    kompose
     terraform
     packer
     gettext
@@ -70,8 +71,7 @@ PACKAGES=(
     gnupg
     hub
     httpie
-    kubernetes-cli
-    kubernetes-helm
+    helm
     maven
     imagemagick
     jq
@@ -116,16 +116,13 @@ PACKAGES=(
 
 CASKS=(
     burp-suite
-    android-studio
     google-cloud-sdk
     vagrant
     wireshark
     libreoffice
     gimp
     docker
-    firefox
     google-chrome
-    keepingyouawake
     miro
     protopie
     rectangle
@@ -135,14 +132,12 @@ CASKS=(
     virtualbox
     visual-studio-code
     vlc
-    zoom
 )
 PYTHON_PACKAGES=(
     ipython
     virtualenv
     virtualenvwrapper
 )
-
 
 
 brew_install(){
@@ -201,8 +196,9 @@ create_symlinks () {
 }
 
 
-
-echo "You are about to config vim , tmux , your bash profile and inputrc file. Ready? Let us do some stuff for you."
+install_dotfiles_dep(){
+echo " installing dotfiles startet"
+sleep 5s 
 
 echo "checking if git exist"
 which git > /dev/null
@@ -227,9 +223,11 @@ if ["$?" != "0" ]; then
     echo "you need to install tmux"
     exit 1
 fi
+}
 
 if [ ! -d "$INSTALLDIR" ]; then
     echo "could't find dotfiles config in the current directory, we will clone from remote repo"
+    install_xcode
     git clone git@github.com:laithrafid/dotfiles.git $INSTALLDIR
     create_symlinks
     echo "sourcing new config"
