@@ -1,0 +1,27 @@
+# This is Git's per-user configuration file.
+[user]
+# Please adapt and uncomment the following lines:
+	name = Laith
+	email = laith@bayt.cloud
+[color]
+	branch = auto
+	diff = auto
+	interactive = auto
+	pager = true
+	status = auto
+	ui = true
+[core]
+	editor = vim~
+	autocrlf = input
+        pager = less -FRSX
+[color "status"]
+	added = green
+	changed = yellow
+	untracked = red
+[push]
+	default = current
+[alias]
+	cm = commit
+	ck = checkout
+	st = status -sb
+	lg = log --graph --pretty=format:'%C(yellow)%h%C(auto)%d%Creset %s %C(white)- %an, %ar%Creset'
