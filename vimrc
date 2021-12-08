@@ -1,12 +1,14 @@
 " vimrc 
 " Author: Laith@bayt.cloud
-" Source: placeholder
+" Source: https://github.com/laithrafid/dotfiles
 
 set nocompatible
+set mouse=a
 filetype on
 filetype off
-
 syntax on
+let mapleader = ","
+let maplocalleader = "//"
 
 set rtp+=~/.vim/bundle/Vundle.vim
 call vundle#begin()
@@ -38,9 +40,25 @@ let g:gitgutter_terminal_reports_focus=0
 
 " Nerd tree
 Plugin 'scrooloose/nerdtree'
+nmap <tab> :NERDTreeToggle<cr>
+
+
+" floating terminal
+Plugin 'voldikss/vim-floaterm'
+let g:floaterm_keymap_new    = '<F7>'
+let g:floaterm_keymap_prev   = '<F8>'
+let g:floaterm_keymap_next   = '<F9>'
+let g:floaterm_keymap_toggle = '<F12>'
 
 call vundle#end()            " required
 filetype plugin indent on    " required
+
+
+
+" Splits ,v and ,h to open new splits (vertical and horizontal)
+nnoremap <leader>v <C-w>v<C-w>l
+nnoremap <leader>h <C-w>s<C-w>j
+
 
 " To ignore plugin indent changes, instead use:
 "filetype plugin on
@@ -54,4 +72,3 @@ filetype plugin indent on    " required
 " see :h vundle for more details or wiki for FAQ
 " Put your non-Plugin stuff after this line
 
- 
