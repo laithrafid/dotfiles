@@ -296,6 +296,8 @@ alias cleanupDS="find . -type f -name '*.DS_Store' -ls -delete"
 # to be used after installing with brew to solve issues with Mac Builtin vim
 test -e "${HOME}/.iterm2_shell_integration.bash" && source "${HOME}/.iterm2_shell_integration.bash"
 
+bind '"^[[A":history-search-backward'
+bind '"^[[B":history-search-forward'
 
 if [ -f $(brew --prefix)/etc/bash_completion ]; then
     . $(brew --prefix)/etc/bash_completion
