@@ -123,6 +123,8 @@ CASKS=(
     virtualbox
     visual-studio-code
     vlc
+    microsoft-remote-desktop
+    openphone
 )
 PYTHON_PACKAGES=(
     ipython
