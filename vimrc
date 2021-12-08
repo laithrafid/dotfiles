@@ -3,6 +3,7 @@
 " Source: https://github.com/laithrafid/dotfiles
 
 set nocompatible
+set ttymouse=xterm2
 set mouse=a
 filetype on
 filetype off
