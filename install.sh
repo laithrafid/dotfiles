@@ -30,7 +30,7 @@ fi
 INSTALLDIR=${INSTALLDIR:-"~/.dotfiles"}
 SUDO_USER=$(whoami)
 PACKAGES=(
-    bash-completionbrew-cask-completion
+    bash-completion
     brew-cask-completion
     coreutils
     gnu-sed
@@ -205,14 +205,13 @@ fi
 
 }
 
-var=$1
 echo ----------------------------------------------------------------------------------------------------------
 echo -----What would you like to do ? -----for install enter i ---- cleanUp enter c ---- update enter u -------
 echo ----------------------------------------------------------------------------------------------------------
 read var
 
 
-if [ ! -d "$INSTALLDIR" || $var==i ]; then
+if [ ! -d "$INSTALLDIR" ] || [ $var == 'i' ]; then
     echo "bootstraping started ................"
     install_xcode
     brew_install
@@ -222,7 +221,7 @@ if [ ! -d "$INSTALLDIR" || $var==i ]; then
     cd $INSTALLDIR
     install_deps
     vim +PluginInstall +qall
-else [ $var==u ]; then 
+elif [ $var == 'u' ]; then 
     echo "upgrading started   ................"
     cd $INSTALLDIR
     git pull origin main
@@ -231,7 +230,7 @@ else [ $var==u ]; then
     install_deps
     source ~/.profile
     vim +PluginuInstall! +qall
-else [ $var==c ]; then 
+elif [ $var == 'c' ]; then 
     echo "cleanup  started   ................"
     brew_uninstall
     vim +PluginClean +qall
