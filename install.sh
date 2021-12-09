@@ -163,7 +163,7 @@ brew_uninstall(){
     brew upgrade
 }
 
-create_symlinks () {
+create_symlinks(){
 
     if [ ! -f ~/.conf.tmux ]; then
         ln -sfn $INSTALLDIR/tmux.conf ~/.tmux.conf
