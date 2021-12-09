@@ -38,7 +38,6 @@ PACKAGES=(
     gnu-indent
     gnu-which
     findutils
-    alfred
     asciinema
     bash
     nmap
@@ -211,8 +210,9 @@ echo ---------------------------------------------------------------------------
 read var
 
 
-if [ ! -d "$INSTALLDIR" ] || [ $var == 'i' ]; then
+if [ $var == 'i' ]; then
     echo "bootstraping started ................"
+    
     install_xcode
     brew_install
     git clone git@github.com:laithrafid/dotfiles.git $INSTALLDIR
