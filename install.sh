@@ -27,8 +27,8 @@ else
 fi
 }
 
-INSTALLDIR=${INSTALLDIR:-"~/.dotfiles"}
 SUDO_USER=$(whoami)
+INSTALLDIR=${INSTALLDIR:-"home/$SUDO_USER/dotfiles"}
 PACKAGES=(
     bash-completion
     brew-cask-completion
@@ -45,8 +45,6 @@ PACKAGES=(
     autoconf
     automake
     autojump
-    aws-iam-authenticator
-    boot2docker
     ffmpeg
     fx
     kompose
