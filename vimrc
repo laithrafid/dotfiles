@@ -10,7 +10,7 @@ filetype off
 syntax on
 let mapleader = ","
 let maplocalleader = "//"
-
+set backspace=indent,eol,start
 set rtp+=~/.vim/bundle/Vundle.vim
 call vundle#begin()
 

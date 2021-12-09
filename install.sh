@@ -196,8 +196,6 @@ create_symlinks(){
 
 install_deps(){
 echo " installing dotfiles startet"
-sleep 5s 
-
 echo "checking if git exist"
 which git > /dev/null
 if [ "$?" != "0" ]; then
@@ -205,6 +203,7 @@ if [ "$?" != "0" ]; then
   exit 1
 else
   echo "Installing vundle into ~/.vim/bundle/ directory"
+  rm -rf ~/.vim/*
   git clone https://github.com/VundleVim/Vundle.vim.git ~/.vim/bundle/Vundle.vim
 fi
 
