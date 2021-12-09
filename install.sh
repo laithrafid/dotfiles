@@ -28,7 +28,7 @@ fi
 }
 
 SUDO_USER=$(whoami)
-INSTALLDIR=${INSTALLDIR:-"/home/$SUDO_USER/dotfiles/"}
+INSTALLDIR=/home/$SUDO_USER/dotfiles
 PACKAGES=(
     bash-completion
     brew-cask-completion
@@ -166,17 +166,29 @@ brew_uninstall(){
 create_symlinks(){
 	if [ ! -h ~/.conf.tmux ]; then
 		ln -sfn $INSTALLDIR/tmux.conf ~/.tmux.conf
+	else
+		rm -rf ~/.tmux.conf
+		ln -sfn $INSTALLDIR/tmux.conf ~/.tmux.conf
 	fi
 	
 	if [ ! -h ~/.profile ]; then
-		ln -sfn $INSTALLDIR/bash_profile ~/.profile
+		ln -sfn $installdir/bash_profile ~/.profile
+	else
+		rm -rf ~/.profile
+		ln -sfn $installdir/bash_profile ~/.profile
 	fi
 	
 	if [ ! -h ~/.vimrc ]; then
 		ln -sfn $INSTALLDIR/vimrc ~/.vimrc
+	else
+		rm -rf ~/.vimrc
+		ln -sfn $INSTALLDIR/vimrc ~/.vimrc
 	fi
 	
 	if [ ! -h ~/.gitconfig ]; then
+		ln -sfn $INSTALLDIR/gitconfig ~/.gitconfig
+	else
+		rm -rf ~/.gitconfig
 		ln -sfn $INSTALLDIR/gitconfig ~/.gitconfig
 	fi
 }
