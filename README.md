@@ -1,10 +1,5 @@
 # dotfiles 
-
-### Copy/Paste this line in your CLI:
-    for Tmux.conf and profile
-    curl -L  https://raw.githubusercontent.com/laithrafid/dotfiles/main/install.sh  | sh
-    for Vimrc.config
-    curl -L https://raw.github.com/zaiste/vimified/master/install.sh | sh
-
-
-
+TO INSTALL CHOOSE  i
+ /bin/bash -c  "$(curl -fsSL https://raw.githubusercontent.com/laithrafid/dotfiles/main/install.sh)"
+To Update Choose u
+To CleanUp choose c
