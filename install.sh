@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/bash
 set -euo pipefail
 IFS=$'\n\t'
 
@@ -22,6 +22,8 @@ if [ $? -ne 0 ]; then
     tail -n 1 | sed 's/^[^C]* //')
     echo "Prod: ${PROD}"
   softwareupdate -i "$PROD" --verbose;
+echo "install home brew starting ...."
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 else
   echo "Xcode CLI tools OK"
 fi
@@ -150,17 +152,15 @@ brew_install(){
 
 brew_uninstall(){
     echo "Uninstalling packages..."
-    brew uninstall ${PACKAGES[@]}
+    brew uninstall --force ----ignore-dependencies ${PACKAGES[@]}
     echo "Uninstalling cask apps..."
-    sudo -u $SUDO_USER brew uninstall --cask ${CASKS[@]}
+    sudo -u $SUDO_USER brew uninstall --ignore-dependencies --force --cask ${CASKS[@]}
     echo "Uninstalling Python packages..."
     sudo -u $SUDO_USER pip3 uninstall ${PYTHON_PACKAGES[@]}
     sudo -u $SUDO_USER pip3 uninstall setuptools
     sudo -u $SUDO_USER pip3 uninstall  pip
-    echo "brew update"
-    brew update
-    echo "brew upgrade"
-    brew upgrade
+    echo "Uninsatll brew"
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/uninstall.sh)"
 }
 
 create_symlinks(){
@@ -206,7 +206,6 @@ else
   rm -rf ~/.vim/*
   git clone https://github.com/VundleVim/Vundle.vim.git ~/.vim/bundle/Vundle.vim
 fi
-
 }
 
 echo ----------------------------------------------------------------------------------------------------------
@@ -246,6 +245,7 @@ c)
     vim +PluginClean +qall
     rm -rf ~/.vim/*
     rm -rf $INSTALLDIR
+    
     ;;
 esac
 
