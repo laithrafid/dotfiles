@@ -212,7 +212,7 @@ echo ---------------------------------------------------------------------------
 echo -----What would you like to do ? -----for install enter i ---- cleanUp enter c ---- update enter u -------
 echo ----------------------------------------------------------------------------------------------------------
 echo "to Proceed [i/c/u]:" 
-read var || var='i'
+read var
 
 
 case $var in
