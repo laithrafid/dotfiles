@@ -172,10 +172,10 @@ create_symlinks(){
 	fi
 	
 	if [ ! -h ~/.profile ]; then
-		ln -sfn $installdir/bash_profile ~/.profile
+		ln -sfn $INSTALLDIR/bash_profile ~/.profile
 	else
 		rm -rf ~/.profile
-		ln -sfn $installdir/bash_profile ~/.profile
+		ln -sfn $INSTALLDIR/bash_profile ~/.profile
 	fi
 	
 	if [ ! -h ~/.vimrc ]; then
