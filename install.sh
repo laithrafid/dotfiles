@@ -210,7 +210,8 @@ if [ $var == 'i' ]; then
     
     install_xcode
     brew_install
-    git clone git@github.com:laithrafid/dotfiles.git $INSTALLDIR
+    if [ ! -d dotfiles]; then git clone git@github.com:laithrafid/dotfiles.git $INSTALLDIR fi
+    echo "creating symlinks ....."
     create_symlinks
     source ~/.profile
     cd $INSTALLDIR
