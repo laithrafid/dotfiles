@@ -221,8 +221,7 @@ i)
     echo "bootstraping started ................"
     install_xcode
     brew_install
-    if [ -d "$INSTALLDIR" ]; then 
-	    rm -rf "$INSTALLDIR"
+    if [ ! -d "$INSTALLDIR" ]; then 
 	    git clone git@github.com:laithrafid/dotfiles.git "$INSTALLDIR" 
     fi
     echo "creating symlinks ....."
