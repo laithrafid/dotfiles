@@ -28,7 +28,7 @@ fi
 }
 
 SUDO_USER=$(whoami)
-INSTALLDIR=${INSTALLDIR:-"home/$SUDO_USER/dotfiles"}
+INSTALLDIR=${INSTALLDIR:-"/home/$SUDO_USER/dotfiles"}
 PACKAGES=(
     bash-completion
     brew-cask-completion
@@ -121,6 +121,7 @@ CASKS=(
     visual-studio-code
     vlc
     microsoft-remote-desktop
+    sublime-text
     openphone
 )
 PYTHON_PACKAGES=(
