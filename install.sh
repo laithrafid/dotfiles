@@ -207,7 +207,7 @@ else
   git clone https://github.com/VundleVim/Vundle.vim.git ~/.vim/bundle/Vundle.vim
 fi
 }
-
+var = i
 echo ----------------------------------------------------------------------------------------------------------
 echo -----What would you like to do ? -----for install enter i ---- cleanUp enter c ---- update enter u -------
 echo ----------------------------------------------------------------------------------------------------------
