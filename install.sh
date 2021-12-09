@@ -145,8 +145,6 @@ brew_install(){
     brew update
     echo "brew upgrade"
     brew upgrade
-    echo "brew doctor"
-    brew doctor
 }
 
 brew_uninstall(){
@@ -162,8 +160,6 @@ brew_uninstall(){
     brew update
     echo "brew upgrade"
     brew upgrade
-    echo "brew doctor"
-    brew doctor
 }
 
 create_symlinks () {
