@@ -299,8 +299,4 @@ test -e "${HOME}/.iterm2_shell_integration.bash" && source "${HOME}/.iterm2_shel
 bind '"^[[A":history-search-backward'
 bind '"^[[B":history-search-forward'
 
-if [ -f $(brew --prefix)/etc/bash_completion ]; then
-    . $(brew --prefix)/etc/bash_completion
-fi
-
 export PATH="/usr/local/sbin:$PATH"
