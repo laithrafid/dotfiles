@@ -28,7 +28,7 @@ fi
 }
 
 SUDO_USER=$(whoami)
-INSTALLDIR=${INSTALLDIR:-"/home/$SUDO_USER/dotfiles"}
+INSTALLDIR=${INSTALLDIR:-"/home/$SUDO_USER/dotfiles/"}
 PACKAGES=(
     bash-completion
     brew-cask-completion
@@ -164,22 +164,21 @@ brew_uninstall(){
 }
 
 create_symlinks(){
-
-    if [ ! -f ~/.conf.tmux ]; then
-        ln -sfn $INSTALLDIR/tmux.conf ~/.tmux.conf
-    fi
-
-    if [ ! -f ~/.profile ]; then
-        ln -sfn $INSTALLDIR/bash_profile ~/.profile
-    fi
-
-    if [ ! -f ~/.vimrc ]; then
-        ln -sfn $INSTALLDIR/vimrc ~/.vimrc
-    fi
-
-    if [ ! -f ~/.gitconfig ]; then
-        ln -sfn $INSTALLDIR/gitconfig ~/.gitconfig
-    fi
+	if [ ! -h ~/.conf.tmux ]; then
+		ln -sfn $INSTALLDIR/tmux.conf ~/.tmux.conf
+	fi
+	
+	if [ ! -h ~/.profile ]; then
+		ln -sfn $INSTALLDIR/bash_profile ~/.profile
+	fi
+	
+	if [ ! -h ~/.vimrc ]; then
+		ln -sfn $INSTALLDIR/vimrc ~/.vimrc
+	fi
+	
+	if [ ! -h ~/.gitconfig ]; then
+		ln -sfn $INSTALLDIR/gitconfig ~/.gitconfig
+	fi
 }
 
 
@@ -205,13 +204,14 @@ echo ---------------------------------------------------------------------------
 read var
 
 
-if [ $var == 'i' ]; then
+case $var in
+i)	
     echo "bootstraping started ................"
-    
     install_xcode
     brew_install
-    if [ ! -d $INSTALLDIR ]; then 
-	    git clone git@github.com:laithrafid/dotfiles.git $INSTALLDIR 
+    if [ -d "$INSTALLDIR" ]; then 
+	    rm -rf "$INSTALLDIR"
+	    git clone git@github.com:laithrafid/dotfiles.git "$INSTALLDIR" 
     fi
     echo "creating symlinks ....."
     create_symlinks
@@ -219,7 +219,8 @@ if [ $var == 'i' ]; then
     cd $INSTALLDIR
     install_deps
     vim +PluginInstall +qall
-elif [ $var == 'u' ]; then 
+    ;;
+u) 
     echo "upgrading started   ................"
     cd $INSTALLDIR
     git pull origin main
@@ -228,13 +229,15 @@ elif [ $var == 'u' ]; then
     install_deps
     source ~/.profile
     vim +PluginuInstall! +qall
-elif [ $var == 'c' ]; then 
+    ;;
+c) 
     echo "cleanup  started   ................"
     brew_uninstall
     vim +PluginClean +qall
     rm -rf ~/.vim/*
     rm -rf $INSTALLDIR
-fi
+    ;;
+esac
 
 if [ ! -f ~/.bashrc ]; then
     echo "if [ -f ~/.profile ]; then . ~/.profile ; fi" >> ~/.bashrc
