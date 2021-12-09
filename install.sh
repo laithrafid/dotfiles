@@ -28,7 +28,7 @@ fi
 }
 
 SUDO_USER=$(whoami)
-INSTALLDIR=/home/$SUDO_USER/dotfiles
+INSTALLDIR=/Users/$SUDO_USER/dotfiles
 PACKAGES=(
     bash-completion
     brew-cask-completion
