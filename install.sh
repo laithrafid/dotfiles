@@ -226,7 +226,6 @@ i)
     echo "creating symlinks ....."
     create_symlinks
     source ~/.profile
-    cd $INSTALLDIR
     install_deps
     vim +PluginInstall +qall
     ;;
