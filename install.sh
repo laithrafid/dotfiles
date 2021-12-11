@@ -226,7 +226,7 @@ case $var in
 i)	
     echo "bootstraping started ................"
     install_xcode
-    install_test    
+    install_test
     brew_install
     if [ ! -d "$INSTALLDIR" ]; then 
 	    git clone git@github.com:laithrafid/dotfiles.git "$INSTALLDIR" 
@@ -242,7 +242,6 @@ u)
     echo "upgrading started   ................"
     cd $INSTALLDIR
     git pull origin main
-   # install_homebrew
     brew_install
     create_symlinks
     install_deps
