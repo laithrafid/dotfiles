@@ -221,7 +221,7 @@ i)
     install_xcode
     brew_install
     if [ ! -d "$INSTALLDIR" ]; then 
-	    git clone git@github.com:laithrafid/dotfiles.git "$INSTALLDIR" 
+	    git clone https://github.com/laithrafid/dotfiles.git "$INSTALLDIR" 
     fi
     echo "creating symlinks ....."
     create_symlinks
