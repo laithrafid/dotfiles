@@ -211,7 +211,7 @@ homebrew="$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/i
 which brew > /dev/null
 if [ "$?" != "0" ]; then
 echo "installing homebrew"
-source $homebrew
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 else 
 echo "already installed"
 fi
