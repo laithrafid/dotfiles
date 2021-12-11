@@ -1,6 +1,6 @@
 #!/bin/bash
 set -euo pipefail
-#IFS=$'\n\t'
+IFS=$'\n\t'
 
 # inspired by
 # https://gist.github.com/codeinthehole/26b37efa67041e1307db
@@ -206,16 +206,6 @@ else
 fi
 }
 
-install_test(){
-homebrew="$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-which brew > /dev/null
-if [ "$?" != "0" ]; then
-echo "installing homebrew"
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-else 
-echo "already installed"
-fi
-}
 
 
 echo ----------------------------------------------------------------------------------------------------------
@@ -229,7 +219,6 @@ case $var in
 i)	
     echo "bootstraping started ................"
     install_xcode
-    install_test
     brew_install
     if [ ! -d "$INSTALLDIR" ]; then 
 	    git clone git@github.com:laithrafid/dotfiles.git "$INSTALLDIR" 
