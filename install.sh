@@ -406,7 +406,7 @@ Usage: $0 [options]
                      Skips removal of HOMEBREW_CACHE and HOMEBREW_LOGS.
     -f, --force      Uninstall without prompting.
     -q, --quiet      Suppress all output.
-    -n, --dry-run    Simulate uninstall but don't remove anything.
+    -n, --dry-run    Simulate uninstall but dont remove anything.
     -h, --help       Display this message.
 EOS
   exit "${1:-0}"
