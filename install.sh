@@ -206,7 +206,7 @@ else
 fi
 }
 
-install_test{
+install_test(){
 homebrew="$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 which brew > /dev/null
 if [ "$?" != "0" ]; then
