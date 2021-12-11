@@ -212,6 +212,9 @@ which brew > /dev/null
 if [ "$?" != "0" ]; then
 echo "installing homebrew"
 source $homebrew
+else 
+echo "already installed"
+fi
 }
 
 
