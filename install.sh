@@ -146,6 +146,7 @@ brew_install(){
     brew update
     echo "brew upgrade"
     brew upgrade
+    npm install -g browser-sync
 }
 
 brew_uninstall(){
