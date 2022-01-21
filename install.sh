@@ -190,6 +190,13 @@ create_symlinks(){
 		rm -rf ~/.gitconfig
 		ln -sfn $INSTALLDIR/gitconfig ~/.gitconfig
 	fi
+    if [ ! -h ~/.gitignore_global ]; then
+        ln -sfn $INSTALLDIR/gitignore ~/.gitignore_global
+    else
+        rm -rf ~/.gitignore_global
+        ln -sfn $INSTALLDIR/gitignore ~/.gitignore_global
+
+    fi
 }
 
 

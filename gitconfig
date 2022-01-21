@@ -44,6 +44,7 @@
 	editor = vim~
 	autocrlf = input
         pager = less -FRSX
+	excludesfile = /Users/laithrafid/.gitignore_global
 [color "status"]
 	added = green
 	changed = yellow
