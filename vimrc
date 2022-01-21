@@ -60,6 +60,8 @@ filetype plugin indent on    " required
 nnoremap <leader>v <C-w>v<C-w>l
 nnoremap <leader>h <C-w>s<C-w>j
 
+" vimdiff 
+Plugin 'chrisbra/vim-diff-enhanced'
 
 " To ignore plugin indent changes, instead use:
 "filetype plugin on
