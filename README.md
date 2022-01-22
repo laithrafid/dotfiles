@@ -1,6 +1,14 @@
 # dotfiles 
+├── README.md < You are here
+├── bash_profile < your profile
+├── gitconfig < git configs
+├── gitignore < git ignores
+├── inputrc
+├── install.sh < script to clone and install
+├── tmux.conf < tmux configs
+└── vimrc < vim configs
 
-[create issue](https://github.com/laithrafid/dotfiles/new)
+8 files
 
 
 ```bash
