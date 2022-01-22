@@ -197,6 +197,13 @@ create_symlinks(){
         ln -sfn $INSTALLDIR/gitignore ~/.gitignore_global
 
     fi
+       if [ ! -h ~/.inputrc ]; then
+        ln -sfn $INSTALLDIR/inputrc ~/.inputrc
+    else
+        rm -rf ~/.gitignore_global
+        ln -sfn $INSTALLDIR/inputrc ~/.inputrc
+
+    fi
 }
 
 

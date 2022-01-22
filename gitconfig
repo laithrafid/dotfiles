@@ -41,7 +41,7 @@
 	plus-empty-line-marker-style = normal normal
 	line-numbers-right-format = "{np:^4}│ "
 [core]
-	editor = vim~
+	editor = vim
 	autocrlf = input
         pager = less -FRSX
 	excludesfile = /Users/laithrafid/.gitignore_global

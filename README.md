@@ -57,14 +57,14 @@
 ## About The Project
 
 # dotfiles 
-├── README.md < You are here
-├── bash_profile < your profile
-├── gitconfig < git configs
-├── gitignore < git ignores
-├── inputrc
-├── install.sh < script to clone and install
-├── tmux.conf < tmux configs
-└── vimrc < vim configs
+- README.md < You are here
+- bash_profile < your profile
+- gitconfig < git configs
+- gitignore < git ignores
+- inputrc
+- install.sh < script to clone and install
+- tmux.conf < tmux configs
+- vimrc < vim configs
 
 8 files
 
