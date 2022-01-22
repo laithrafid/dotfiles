@@ -1,9 +1,6 @@
 # dotfiles 
-[fork my repository](https://github.com/laithrafid/dotfiles/main/fork)
 
-[watch this repo](https://github.com/laithrafid/dotfiles/main/subscription)
-
-[create issue](https://github.com/laithrafid/dotfiles/main/new)
+[create issue](https://github.com/laithrafid/dotfiles/new)
 
 
 ```bash
