@@ -122,6 +122,7 @@ CASKS=(
     vlc
     microsoft-remote-desktop
     sublime-text
+    sublime-merge
     openphone
 )
 PYTHON_PACKAGES=(
