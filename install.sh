@@ -94,6 +94,7 @@ PACKAGES=(
     tesseract
     the_silver_searcher
     tmux
+    gh
     tree
     yamllint
     vim
