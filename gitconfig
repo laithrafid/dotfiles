@@ -60,7 +60,9 @@
 	###########################
 	br = branch
 	bra = branch --all
-	brd = branch --delete  
+	brn = "!git branch $1 && git push origin -u $1; #"
+	brd = "!git branch -d $1 && git push origin --delete $1; #"
+	brD = "!git branch -D $1 && git push origin --delete $1; #" 
 	brm = branch --merged
 	brnm = branch --no-merged 
 	###########################
@@ -77,13 +79,17 @@
 	cmd = commit --amend
 	cmad = commit -a --amend
 	###########################
-	lg = log --oneline
+	lg = log --oneline 
+	lgr = log --oneline --graph --all --pretty=format:'%C(yellow)%h%C(auto)%d%Creset %s %C(white)- %an, %ar%Creset'
 	lgl = log --graph --pretty=format:'%C(yellow)%h%C(auto)%d%Creset %s %C(white)- %an, %ar%Creset'
 	###########################
 	ps = push
 	psf = push -f
 	psu = push -u
 	pst = push --tags
+	pso = push origin 
+	psou = push origin -u
+	psul = push origin -u --all
 	psom = push origin main
 	###########################
 	cp = cherry-pick
@@ -91,10 +97,11 @@
 	cpc = cherry-pick --continue
 	###########################
 	df = diff
+	dfd = diff --cashed
 	dft = difftool
 	###########################
 	mg = merge 
-	mgd = "!git mg $1 && git br -d $1; #"
+	mgd = "!git merge $1 && git branch -d $1; #"
 	###########################
 	fh = fetch
 	###########################
