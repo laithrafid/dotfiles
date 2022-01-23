@@ -125,7 +125,7 @@
 	ck = checkout
 	ckm = checkout main
 	ckb = checkout -b
-	cha = !sh -c 'git fo pull/$1/head:pr-$1 && git o pr-$1'
+	cka = !sh -c 'git fo pull/$1/head:pr-$1 && git o pr-$1'
 	#############
 	pr = prune -v
 	#############
