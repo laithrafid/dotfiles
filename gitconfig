@@ -63,8 +63,9 @@
 	brn = "!git branch $1 && git push origin -u $1; #"
 	brd = "!git branch -d $1 && git push origin --delete $1; #"
 	brD = "!git branch -D $1 && git push origin --delete $1; #" 
-	brm = branch --merged
-	brnm = branch --no-merged 
+	brrn = "!git branch --move $1 $2 && git push origin :$1 $2 && git push -f origin -u $2; #"
+	brmg = branch --merged
+	brnmg = branch --no-merged 
 	###########################
 	cl = clone 
 	###########################
@@ -82,6 +83,7 @@
 	lg = log --oneline 
 	lgr = log --oneline --graph --all --pretty=format:'%C(yellow)%h%C(auto)%d%Creset %s %C(white)- %an, %ar%Creset'
 	lgl = log --graph --pretty=format:'%C(yellow)%h%C(auto)%d%Creset %s %C(white)- %an, %ar%Creset'
+	lgrv = log --oneline --reverse --all --pretty=format:'%C(yellow)%h%C(auto)%d%Creset %s %C(white)- %an, %ar%Creset'
 	###########################
 	ps = push
 	psf = push -f
@@ -90,7 +92,7 @@
 	pso = push origin 
 	psou = push origin -u
 	psul = push origin -u --all
-	psom = push origin main
+	psom = push origin -u main
 	###########################
 	cp = cherry-pick
 	cpa = cherry-pick --abort
