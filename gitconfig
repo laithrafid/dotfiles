@@ -68,7 +68,7 @@
 	brmg = branch --merged
 	brnmg = branch --no-merged 
 	###########################
-	cl = clone s
+	cl = clone
 	###########################
 	ck = checkout 
 	ckb = checkout -b
