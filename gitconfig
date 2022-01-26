@@ -64,10 +64,11 @@
 	brd = "!git branch -d $1 && git push origin --delete $1; #"
 	brD = "!git branch -D $1 && git push origin --delete $1; #" 
 	brrn = "!git branch --move $1 $2 && git push origin :$1 $2 && git push -f origin -u $2; #"
+	brpl = !/Users/$USER/dotfiles/gitpullallbranches
 	brmg = branch --merged
 	brnmg = branch --no-merged 
 	###########################
-	cl = clone 
+	cl = clone s
 	###########################
 	ck = checkout 
 	ckb = checkout -b
