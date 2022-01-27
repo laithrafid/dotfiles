@@ -34,6 +34,8 @@ let g:fzf_preview_window = ['up:40%:hidden', 'ctrl-/']
 " Empty value to disable preview window altogether
 let g:fzf_preview_window = []
 
+" Go support 
+Plugin 'fatih/vim-go'
 
 " vim-git gutter shows git diff 
 Plugin 'vim-gitgutter'
