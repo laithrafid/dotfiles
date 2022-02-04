@@ -294,4 +294,4 @@ alias cleanupDS="find . -type f -name '*.DS_Store' -ls -delete"
 #   then use: ~/Dev/Perl/randBytes 1048576 > 10MB.dat
 # to be used after installing with brew to solve issues with Mac Builtin vim
 [ -f /usr/local/etc/bash_completion ] && . /usr/local/etc/bash_completion
-export PATH="/usr/local/sbin:$PATH"
+export PATH="/usr/local/sbin:~/go/bin/:$PATH"
