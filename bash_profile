@@ -26,7 +26,7 @@
 
 #   Set Paths
 #   ------------------------------------------------------------
-    export PATH="/usr/local/bin/:/usr/local/sbin:$(go env GOPATH)/bin:$PATH"
+    export PATH="/usr/local/sbin:$(go env GOPATH)/bin:$PATH"
 
 #   Set default blocksize for ls, df, du
 #   from this: http://hints.macworld.com/comment.php?mode=view&cid=24491
