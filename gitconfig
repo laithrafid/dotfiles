@@ -3,6 +3,8 @@
 # Please adapt and uncomment the following lines:
 	name = Laith
 	email = laith@bayt.cloud
+[url "ssh://git@github.com/"]
+	insteadOf = https://github.com/
 [color]
 	ui = auto
 [color "branch"]
