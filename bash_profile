@@ -47,7 +47,7 @@
 #   -----------------------------
 #   2.  MAKE TERMINAL BETTER
 #   -----------------------------
-alias cdgo='cd ~/go/src/github.com/laithrafid/'
+alias cdgo='cd ~/Desktop/code/backend/golang'
 alias cp='cp -iv'                           # Preferred 'cp' implementation
 alias mv='mv -iv'                           # Preferred 'mv' implementation
 alias mkdir='mkdir -pv'                     # Preferred 'mkdir' implementation
@@ -293,3 +293,4 @@ alias cleanupDS="find . -type f -name '*.DS_Store' -ls -delete"
 #   e.g.: hdiutil create -size 10m 10MB.dmg
 #   the above create files that are almost all zeros - if random bytes are desired
 #   then use: ~/Dev/Perl/randBytes 1048576 > 10MB.dat
+[[ -r "/usr/local/etc/profile.d/bash_completion.sh" ]] && . "/usr/local/etc/profile.d/bash_completion.sh"
