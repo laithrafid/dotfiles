@@ -29,102 +29,262 @@ fi
 
 SUDO_USER=$(whoami)
 INSTALLDIR=/Users/$SUDO_USER/dotfiles
-PACKAGES=(
-    bash-completion
-    brew-cask-completion
-    coreutils
-    gnu-sed
-    gnu-tar
-    gnu-indent
-    gnu-which
-    findutils
-    asciinema
-    bash
-    nmap
-    ack
-    autoconf
-    automake
-    autojump
-    ffmpeg
-    fx
-    kompose
-    terraform
-    packer
-    gettext
-    gifsicle
-    git
-    graphviz
-    gradle
-    golang
-    gnupg
-    hub
-    httpie
-    helm
-    maven
-    imagemagick
-    jq
-    jpegoptim
-    libjpeg
-    libmemcached
-    lynx
-    markdown
-    memcached
-    mercurial
-    minikube
-    npm
-    nvm
-    htop
-    ifstat
-    skaffold
-    curl
-    netron
-    node
-    optipng
-    pkg-config
-    postgresql
-    python
-    python3
-    pypy
-    rabbitmq
-    ripgrep
-    rename
-    ssh-copy-id
-    tig
-    terminal-notifier
-    tesseract
-    the_silver_searcher
-    tmux
-    gh
-    tree
-    yamllint
-    vim
-    watch
-    wget
-    yamllint
+PACKAGES=(  
+ack
+aom
+apr
+apr-util
+argon2
+asciinema
+aspell
+autoconf
+autojump
+automake
+bash
+bash-completion
+bdw-gc
+berkeley-db
+brew-cask-completion
+brotli
+c-ares
+ca-certificates
+cairo
+cjson
+cmocka
+composer
+coreutils
+curl
+dav1d
+docbook
+docbook-xsl
+docker-completion
+doctl
+erlang
+ffmpeg
+findutils
+flac
+fontconfig
+freetds
+freetype
+frei0r
+fribidi
+fx
+gd
+gdbm
+gdk-pixbuf
+gettext
+gh
+ghostscript
+giflib
+gifsicle
+git
+glib
+gmp
+gnu-getopt
+gnu-indent
+gnu-sed
+gnu-tar
+gnu-which
+gnupg
+gnutls
+go
+gobject-introspection
+gradle
+graphite2
+graphviz
+grpcurl
+gts
+guile
+harfbuzz
+helm
+htop
+httpie
+hub
+icu4c
+ifstat
+imagemagick
+imath
+jasper
+jbig2dec
+jpeg
+jpeg-xl
+jpegoptim
+jq
+kompose
+krb5
+kubernetes-cli
+lame
+launchctl-completion
+leptonica
+libarchive
+libass
+libassuan
+libavif
+libb2
+libbluray
+libcbor
+libde265
+libevent
+libffi
+libfido2
+libgcrypt
+libgpg-error
+libheif
+libidn
+libidn2
+libksba
+liblqr
+libmemcached
+libnghttp2
+libogg
+libomp
+libpng
+libpq
+libpthread-stubs
+librist
+librsvg
+libsamplerate
+libsndfile
+libsodium
+libsoxr
+libssh2
+libtasn1
+libtiff
+libtool
+libunistring
+libusb
+libuv
+libvidstab
+libvmaf
+libvorbis
+libvpx
+libx11
+libxau
+libxcb
+libxdmcp
+libxext
+libxrender
+libyaml
+libzip
+little-cms2
+lolcat
+lsusb
+lua
+lynx
+lz4
+lzo
+m4
+markdown
+maven
+mbedtls
+memcached
+mercurial
+minikube
+mpdecimal
+mysql-client
+ncurses
+netpbm
+nettle
+nmap
+node
+npth
+nvm
+oniguruma
+opencore-amr
+openexr
+openjdk
+openjdk@11
+openjpeg
+openldap
+openssl@1.1
+optipng
+opus
+p11-kit
+packer
+packer-completion
+pango
+pcre
+pcre2
+perl
+php
+pinentry
+pixman
+pkg-config
+postgresql
+protobuf
+pypy
+python@3.10
+python@3.9
+rabbitmq
+rav1e
+readline
+rename
+ripgrep
+rtmpdump
+rubberband
+ruby
+s3cmd
+sdl2
+shared-mime-info
+six
+skaffold
+snappy
+speex
+sqlite
+srt
+ssh-copy-id
+tcl-tk
+terminal-notifier
+terraform
+tesseract
+the_silver_searcher
+theora
+tidy-html5
+tig
+tmux
+tree
+unbound
+unixodbc
+utf8proc
+vagrant-completion
+vim
+watch
+waypoint
+webp
+wget
+wxwidgets
+x264
+x265
+xmlto
+xorgproto
+xvid
+xz
+yamllint
+zeromq
+zimg
+zstd
 )
 
 CASKS=(
+    brave-browser
     burp-suite
-    google-cloud-sdk
-    vagrant
-    wireshark
-    libreoffice
-    gimp
     docker
+    gimp
     google-chrome
-    miro
-    protopie
+    google-cloud-sdk
+    microsoft-remote-desktop
+    mysqlworkbench
+    openphone
+    postman
     rectangle
     slack
-    thunderbird
+    sublime-merge
+    sublime-text
     vagrant
     virtualbox
     visual-studio-code
     vlc
-    microsoft-remote-desktop
-    sublime-text
-    sublime-merge
-    openphone
+    wireshark
 )
 PYTHON_PACKAGES=(
     ipython

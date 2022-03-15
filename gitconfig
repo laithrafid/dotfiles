@@ -61,8 +61,9 @@
 	adf = add --force
 	###########################
 	br = branch
+	brn = "!git branch $1 && git checkout $1; #"
 	bra = branch --all
-	brn = "!git branch $1 && git push origin -u $1; #"
+	brnr = "!git branch $1 && git push origin -u $1; #"
 	brd = "!git branch -d $1 && git push origin --delete $1; #"
 	brD = "!git branch -D $1 && git push origin --delete $1; #" 
 	brrn = "!git branch --move $1 $2 && git push origin :$1 $2 && git push -f origin -u $2; #"
