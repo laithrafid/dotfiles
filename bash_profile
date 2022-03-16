@@ -43,11 +43,11 @@
 # History File increase limit to 2000 lines   
  HISTFILESIZE=2000
 
-
+export WDIR=~/Desktop/code/backend/golang
 #   -----------------------------
 #   2.  MAKE TERMINAL BETTER
 #   -----------------------------
-alias cdgo='cd ~/Desktop/code/backend/golang'
+alias cdgo='cd $WDIR'
 alias python='python3'
 alias cp='cp -iv'                           # Preferred 'cp' implementation
 alias mv='mv -iv'                           # Preferred 'mv' implementation
@@ -295,3 +295,4 @@ alias cleanupDS="find . -type f -name '*.DS_Store' -ls -delete"
 #   the above create files that are almost all zeros - if random bytes are desired
 #   then use: ~/Dev/Perl/randBytes 1048576 > 10MB.dat
 [[ -r "/usr/local/etc/profile.d/bash_completion.sh" ]] && . "/usr/local/etc/profile.d/bash_completion.sh"
+alias tshark='tshark --color'
