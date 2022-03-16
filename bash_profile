@@ -38,7 +38,6 @@
 #   from http://osxdaily.com/2012/02/21/add-color-to-the-terminal-in-mac-os-x/
 #   ------------------------------------------------------------
    export CLICOLOR=1
-
    export LSCOLORS=ExFxBxDxCxegedabagacad
 # History File increase limit to 2000 lines   
  HISTFILESIZE=2000
@@ -47,8 +46,9 @@ export WDIR=~/Desktop/code/backend/golang
 #   -----------------------------
 #   2.  MAKE TERMINAL BETTER
 #   -----------------------------
-alias cdgo='cd $WDIR'
-alias python='python3'
+alias cdtm='bash ~/dotfiles/tmux-sessions.sh'   # my Tmus session
+alias cdgo='cd $WDIR'			    # my work dir
+alias python='python3'                      # python
 alias cp='cp -iv'                           # Preferred 'cp' implementation
 alias mv='mv -iv'                           # Preferred 'mv' implementation
 alias mkdir='mkdir -pv'                     # Preferred 'mkdir' implementation
