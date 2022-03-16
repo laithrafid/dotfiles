@@ -26,7 +26,7 @@
 
 #   Set Paths
 #   ------------------------------------------------------------
-    export PATH="/usr/local/sbin:$(go env GOPATH)/bin:$PATH"
+    export PATH="/usr/local/sbin:/usr/local/bin/:$(go env GOPATH)/bin:$PATH"
 
 #   Set default blocksize for ls, df, du
 #   from this: http://hints.macworld.com/comment.php?mode=view&cid=24491
@@ -48,6 +48,7 @@
 #   2.  MAKE TERMINAL BETTER
 #   -----------------------------
 alias cdgo='cd ~/Desktop/code/backend/golang'
+alias python='python3'
 alias cp='cp -iv'                           # Preferred 'cp' implementation
 alias mv='mv -iv'                           # Preferred 'mv' implementation
 alias mkdir='mkdir -pv'                     # Preferred 'mkdir' implementation
