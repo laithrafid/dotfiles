@@ -1,9 +1,9 @@
 #!/bin/bash
 
 SESSION="laith"
-SESSIONEXISTS=$(tmux list-sessions | grep -w "$SESSION")
+SESSIONNOEXISTS=$(tmux list-sessions | grep -w "$SESSION")
 
-if [ "$SESSIONEXISTS" = "" ]
+if [ "$SESSIONNOEXISTS" = "" ]
 then
 
   tmux new-session -d -s "$SESSION" -d -x "$(tput cols)" -y "$(tput lines)"
@@ -43,7 +43,8 @@ then
   tmux splitw -v
   tmux send-keys -t 'ssh' '' C-m
   tmux select-pane -t 1
-fi
-
-tmux attach-session -t "$SESSION":1
+  tmux attach-session -t "$SESSION":1
+else
+	tmux attach-session -t "$SESSION":1
+fi 
 
