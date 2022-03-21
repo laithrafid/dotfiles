@@ -236,6 +236,7 @@ ssh-copy-id
 tcl-tk
 terminal-notifier
 terraform
+terraform-docs
 tesseract
 the_silver_searcher
 theora
