@@ -19,8 +19,14 @@ then
   tmux select-pane -t 1
   tmux splitw -v
 
+  tmux send-keys -t 'mon' 'watch -n 1 -c  networkQuality -I en0 | lolcat' C-m
+  tmux select-pane -t 1
+  tmux splitw -v
+  
   tmux send-keys -t 'mon' 'watch -n 1 docker system df' C-m
   tmux select-pane -t 1
+
+  
 
   tmux new-window -t "$SESSION":2 -n 'dev'
   tmux send-keys -t 'dev' 'cd $WDIR' C-m

@@ -286,6 +286,16 @@ CASKS=(
     visual-studio-code
     vlc
     wireshark
+    ##objective-c security suite (non-cmd)
+    lulu
+    reikey
+    knockknock
+    do-not-disturb
+    netiquette
+    oversight
+    blockblock
+    kextviewr
+
 )
 PYTHON_PACKAGES=(
     ipython
