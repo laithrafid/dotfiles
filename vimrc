@@ -65,6 +65,9 @@ nnoremap <leader>h <C-w>s<C-w>j
 " vimdiff 
 Plugin 'chrisbra/vim-diff-enhanced'
 
+" terraform and Kuberenetes 
+Plugin 'hashivim/vim-terraform'
+Plugin 'andrewstuart/vim-kubernetes'
 " To ignore plugin indent changes, instead use:
 "filetype plugin on
 "
