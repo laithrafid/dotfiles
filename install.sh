@@ -30,6 +30,8 @@ fi
 SUDO_USER=$(whoami)
 INSTALLDIR=/Users/$SUDO_USER/dotfiles
 PACKAGES=(  
+awscli
+azure-cli
 ack
 aom
 apr
