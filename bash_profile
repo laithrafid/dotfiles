@@ -46,6 +46,7 @@ export WDIR=~/Desktop/code/backend/golang
 #   -----------------------------
 #   2.  MAKE TERMINAL BETTER
 #   -----------------------------
+alias gcurl='curl -H "Authorization: Bearer $(gcloud auth print-access-token)" -H "Content-Type: application/json"'
 alias cdtm='bash ~/dotfiles/tmux-sessions.sh'   # my Tmus session
 alias cdgo='cd $WDIR'			    # my work dir
 alias python='python3'                      # python
