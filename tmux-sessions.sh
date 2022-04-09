@@ -15,7 +15,8 @@ then
   tmux send-keys -t 'mon' 'htop' C-m
   tmux splitw -v
  
-  tmux send-keys -t 'mon' 'watch -n 1 docker ps -aq | lolcat' C-m
+  #tmux send-keys -t 'mon' 'watch -n 1 docker ps -aq | lolcat' C-m
+  tmux send-keys -t 'mon' 'watch -n 1 arp -a  | lolcat' C-m
   tmux select-pane -t 1
   tmux splitw -v
 
@@ -23,7 +24,8 @@ then
   tmux select-pane -t 1
   tmux splitw -v
   
-  tmux send-keys -t 'mon' 'watch -n 1 docker system df' C-m
+  tmux send-keys -t 'mon' 'watch -n 1 lsof -iTCP -sTCP:LISTEN,ESTABLISHED -n  | lolcat' C-m
+ # tmux send-keys -t 'mon' 'watch -n 1 docker system df' C-m
   tmux select-pane -t 1
 
   
