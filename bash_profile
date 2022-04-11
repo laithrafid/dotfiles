@@ -21,7 +21,7 @@
 
 #   Change Prompt
 #   ------------------------------------------------------------
-    export PS1="________________________________________________________________________________\n| \w @ \h (\u) \n| => "
+    export PS1="\[\033[36m\]\u\[\033[m\]@\[\033[32m\]\h:\[\033[33;1m\]\w\[\033[m\]\$ "
     export PS2="| => "
 
 #   Set Paths
@@ -37,8 +37,8 @@
 #   (this is all commented out as I use Mac Terminal Profiles)
 #   from http://osxdaily.com/2012/02/21/add-color-to-the-terminal-in-mac-os-x/
 #   ------------------------------------------------------------
-   export CLICOLOR=1
-   export LSCOLORS=ExFxBxDxCxegedabagacad
+export CLICOLOR=1
+export LSCOLORS=ExFxBxDxCxegedabagacad
 # History File increase limit to 2000 lines   
  HISTFILESIZE=2000
 
@@ -47,13 +47,14 @@ export WDIR=~/Desktop/code/backend/golang
 #   2.  MAKE TERMINAL BETTER
 #   -----------------------------
 alias gcurl='curl -H "Authorization: Bearer $(gcloud auth print-access-token)" -H "Content-Type: application/json"'
-alias cdtm='bash ~/dotfiles/tmux-sessions.sh'   # my Tmus session
-alias cdgo='cd $WDIR'			    # my work dir
+alias cdtm='bash ~/dotfiles/tmux-sessions.sh' # my Tmus session
+alias cdgo='cd $WDIR'			            # my work dir
 alias python='python3'                      # python
 alias cp='cp -iv'                           # Preferred 'cp' implementation
 alias mv='mv -iv'                           # Preferred 'mv' implementation
 alias mkdir='mkdir -pv'                     # Preferred 'mkdir' implementation
 alias ll='ls -FGlAhp'                       # Preferred 'ls' implementation
+alias lc='ls -GFh'			                # ls with colors
 alias less='less -FSRXc'                    # Preferred 'less' implementation
 alias cd..='cd ../'                         # Go back 1 directory level (for fast typers)
 alias ..='cd ../'                           # Go back 1 directory level
@@ -63,7 +64,7 @@ alias .4='cd ../../../../'                  # Go back 4 directory levels
 alias .5='cd ../../../../../'               # Go back 5 directory levels
 alias .6='cd ../../../../../../'            # Go back 6 directory levels
 alias edit='subl'                           # edit:         Opens any file in sublime editor
-alias code='code'
+alias code='code'                           # code:         Opens and file or dir in VSCode 
 alias f='open -a Finder ./'                 # f:            Opens current directory in MacOS Finder
 alias ~="cd ~"                              # ~:            Go Home
 alias c='clear'                             # c:            Clear terminal display
@@ -200,7 +201,8 @@ ffe () { /usr/bin/find . -name '*'"$@" ; }  # ffe:      Find file whose name end
 #   6.  NETWORKING
 #   ---------------------------
 
-alias myip='curl ip.appspot.com'                    # myip:         Public facing IP Address
+alias tshark='tshark --color'
+alias myip='curl -s  https://api.my-ip.io/ip'       # myip:         Public facing IP Address
 alias netCons='lsof -i'                             # netCons:      Show all open TCP/IP sockets
 alias flushDNS='dscacheutil -flushcache'            # flushDNS:     Flush out the DNS Cache
 alias lsock='sudo /usr/sbin/lsof -i -P'             # lsock:        Display open sockets
@@ -214,14 +216,22 @@ alias showBlocked='sudo ipfw list'                  # showBlocked:  All ipfw rul
 #   ii:  display useful host related informaton
 #   -------------------------------------------------------------------
     ii() {
-         echo -e "\nYou are logged on ${RED}$HOST"
-         echo -e "\nAdditionnal information:$NC " ; uname -a
-         echo -e "\n${RED}Users logged on:$NC " ; w -h
-         echo -e "\n${RED}Current date :$NC " ; date
-         echo -e "\n${RED}Machine stats :$NC " ; uptime
+         echo -e "\nYou are " `whoami` "logged on "
+         echo -e "\nAdditionnal information:$NC" ; hostinfo| lolcat
+         echo -e "\n_________________________________________________________" 
+         echo -e "\n${RED}Users logged on:$NC " ; w -h | lolcat
+         echo -e "\n_________________________________________________________" 
+         echo -e "\n${RED}Current date :$NC " ; date | lolcat
+         echo -e "\n_________________________________________________________" 
+         echo -e "\n${RED}Machine stats :$NC " ; uptime | lolcat
+         echo -e "\n_________________________________________________________" 
          echo -e "\n${RED}Current network location :$NC " ; scselect
-         echo -e "\n${RED}Public facing IP Address :$NC " ;myip
-         echo -e "\n${RED}DNS Configuration:$NC " ; scutil --dns
+         echo -e "\n_________________________________________________________" 
+         echo -e "\n${RED}Public facing IP Address :$NC " ; myip | lolcat
+         echo -e "\n_________________________________________________________" 
+         echo -e "\n${RED}DNS Resolvers:$NC " ; scutil --dns
+         echo -e "\n_________________________________________________________" 
+         echo -e "\n${RED}is there a proxt: $NC " ; scutil --proxy
          echo
     }
 
@@ -234,13 +244,15 @@ alias showBlocked='sudo ipfw list'                  # showBlocked:  All ipfw rul
 
 #   cleanupDS:  Recursively delete .DS_Store files
 #   -------------------------------------------------------------------
+
 alias cleanupDS="find . -type f -name '*.DS_Store' -ls -delete"
 
 #   finderShowHidden:   Show hidden files in Finder
 #   finderHideHidden:   Hide hidden files in Finder
 #   -------------------------------------------------------------------
-   # alias finderShowHidden='defaults write com.apple.finder ShowAllFiles TRUE'
-    #alias finderHideHidden='defaults write com.apple.finder ShowAllFiles FALSE'
+
+alias finderShowHidden='defaults write com.apple.finder ShowAllFiles TRUE'
+alias finderHideHidden='defaults write com.apple.finder ShowAllFiles FALSE'
 
 #   cleanupLS:  Clean up LaunchServices to remove duplicates in the "Open With" menu
 #   -----------------------------------------------------------------------------------
@@ -263,7 +275,7 @@ alias cleanupDS="find . -type f -name '*.DS_Store' -ls -delete"
 
 #   httpDebug:  Download a web page and show info on what took time
 #   -------------------------------------------------------------------
-#    httpDebug () { /usr/bin/curl $@ -o /dev/null -w "dns: %{time_namelookup} connect: %{time_connect} pretransfer: %{time_pretransfer} starttransfer: %{time_starttransfer} total: %{time_total}\n" ; }
+    httpDebug () { /usr/bin/curl $@ -o /dev/null -w "dns: %{time_namelookup} connect: %{time_connect} pretransfer: %{time_pretransfer} starttransfer: %{time_starttransfer} total: %{time_total}\n" ; }
 
 
 #   ---------------------------------------
@@ -296,4 +308,4 @@ alias cleanupDS="find . -type f -name '*.DS_Store' -ls -delete"
 #   the above create files that are almost all zeros - if random bytes are desired
 #   then use: ~/Dev/Perl/randBytes 1048576 > 10MB.dat
 [[ -r "/usr/local/etc/profile.d/bash_completion.sh" ]] && . "/usr/local/etc/profile.d/bash_completion.sh"
-alias tshark='tshark --color'
+
