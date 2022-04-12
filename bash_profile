@@ -22,8 +22,6 @@
 #   Change Prompt
 #   ------------------------------------------------------------
     export PS1="\[\033[36m\]\u\[\033[m\]@\[\033[32m\]\h:\[\033[33;1m\]\w\[\033[m\]\$ "
-    export PS2="| => "
-
 #   Set Paths
 #   ------------------------------------------------------------
     export PATH="/usr/local/sbin:/usr/local/bin/:$(go env GOPATH)/bin:$PATH"
@@ -42,7 +40,7 @@ export LSCOLORS=ExFxBxDxCxegedabagacad
 # History File increase limit to 2000 lines   
  HISTFILESIZE=2000
 
-export WDIR=~/Desktop/code/backend/golang
+export WDIR=~/Desktop/code/
 #   -----------------------------
 #   2.  MAKE TERMINAL BETTER
 #   -----------------------------
