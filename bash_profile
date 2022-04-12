@@ -99,17 +99,16 @@ alias lr='ls -R | grep ":$" | sed -e '\''s/:$//'\'' -e '\''s/[^-][^\/]*\//--/g'\
 
 myrepos() { 
 RepoNames=$(gh repo list --json name | jq -r '.[] | .name')
-RepoUrls=$(gh repo list --json sshUrl | jq -r '.[] | .sshUrl')
 Field_Separator=$IFSP
 case $1 in 
  c)
     if [ ! -d "$WDIR" ]; then
 	    mcd $WDIR
         IFSP=/n
-        for RepoUrl in $RepoUrls;
+        for RepoUrl in $RepoNames;
             do
-            echo "now cloneing $RepoUrl"
-            git clone $RepoUrl
+            echo "now cloneing $repo" | lolcat
+            gh repo clone laithrafid/$repo  -- --quiet
             done
             IFSP=$Field_Separator
     elif [ -d "$WDIR" ]; then
@@ -117,21 +116,21 @@ case $1 in
        cd $WDIR
 	   for repo in $RepoNames; 
 	    do
-           echo "checking if your repo:$repo exist ..."
+           echo "checking if your repo:$repo exist in $WDIR..." 
             if [ ! -d "$repo" ]; then
-		      git clone -q git@github.com:laithrafid/$repo.git
-              echo "$repo didn't exist , clonning $repo"
+		      gh repo clone laithrafid/$repo -- --quiet
+              echo "$repo didn't exist , clonning $repo into $WDIR" | lolcat
             elif [ -d "$repo" ]; then
-            echo "repo:$repo exist and now going to force update"
-            cd $repo && git pull -fq && cd ..
+            echo "repo:$repo exist in $WDIR.. now going to force update" | lolcat
+            cd $repo && gh repo sync  --force  && cd ..
             fi
         done
         IFSP=$Field_Separator
     else 
-        echo "there is an Error"
-        echo "please make sure gh installed # $ brew install gh #"
-        echo "please authnticate with github using #$ gh auth login # "
-    fi
+        echo "there is an Error" | lolcat
+        echo "please make sure gh installed # $ brew install gh #" | lolcat
+        echo "please authnticate with github using #$ gh auth login # " | lolcat
+    fi 
     ;;
  d)
     for repo in $RepoNames; 
@@ -139,17 +138,17 @@ case $1 in
             cd $WDIR
             if [ -d "$repo" ]; then
                 rm -rf $repo
-                echo "removed $repo"
+                echo "removed $repo" | lolcat
             elif [ ! -d "$repo" ]; then
-                echo "$repo doesn't exist in $WDIR"
+                echo "$repo doesn't exist in $WDIR" | lolcat
             fi
         done
     ;;
   *) 
-    echo "Usage: Please enter myrepo subcommands"
-    echo "c for creating repos" 
-    echo "d for Deleting repos"
-    echo "example myrepo c"
+    echo "Usage: Please enter myrepo subcommands"| lolcat
+    echo "c for creating repos" | lolcat
+    echo "d for Deleting repos"| lolcat
+    echo "example myrepo c" | lolcat
     ;;
 esac
 }
