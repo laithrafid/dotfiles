@@ -96,6 +96,64 @@ alias lr='ls -R | grep ":$" | sed -e '\''s/:$//'\'' -e '\''s/[^-][^\/]*\//--/g'\
 #   3.  FILE AND FOLDER MANAGEMENT
 #   -------------------------------
 
+
+myrepos() { 
+RepoNames=$(gh repo list --json name | jq -r '.[] | .name')
+RepoUrls=$(gh repo list --json sshUrl | jq -r '.[] | .sshUrl')
+Field_Separator=$IFSP
+case $1 in 
+ c)
+    if [ ! -d "$WDIR" ]; then
+	    mcd $WDIR
+        IFSP=/n
+        for RepoUrl in $RepoUrls;
+            do
+            echo "now cloneing $RepoUrl"
+            git clone $RepoUrl
+            done
+            IFSP=$Field_Separator
+    elif [ -d "$WDIR" ]; then
+	   IFSP=/n
+       cd $WDIR
+	   for repo in $RepoNames; 
+	    do
+           echo "checking if your repo:$repo exist ..."
+            if [ ! -d "$repo" ]; then
+		      git clone -q git@github.com:laithrafid/$repo.git
+              echo "$repo didn't exist , clonning $repo"
+            elif [ -d "$repo" ]; then
+            echo "repo:$repo exist and now going to force update"
+            cd $repo && git pull -fq && cd ..
+            fi
+        done
+        IFSP=$Field_Separator
+    else 
+        echo "there is an Error"
+        echo "please make sure gh installed # $ brew install gh #"
+        echo "please authnticate with github using #$ gh auth login # "
+    fi
+    ;;
+ d)
+    for repo in $RepoNames; 
+        do
+            cd $WDIR
+            if [ -d "$repo" ]; then
+                rm -rf $repo
+                echo "removed $repo"
+            elif [ ! -d "$repo" ]; then
+                echo "$repo doesn't exist in $WDIR"
+            fi
+        done
+    ;;
+  *) 
+    echo "Usage: Please enter myrepo subcommands"
+    echo "c for creating repos" 
+    echo "d for Deleting repos"
+    echo "example myrepo c"
+    ;;
+esac
+}
+
 zipf () { zip -r "$1".zip "$1" ; }          # zipf:         To create a ZIP archive of a folder
 alias numFiles='echo $(ls -1 | wc -l)'      # numFiles:     Count of non-hidden files in current dir
 alias make1mb='mkfile 1m ./1MB.dat'         # make1mb:      Creates a file of 1mb size (all zeros)
@@ -200,7 +258,7 @@ ffe () { /usr/bin/find . -name '*'"$@" ; }  # ffe:      Find file whose name end
 #   ---------------------------
 
 alias tshark='tshark --color'
-alias myip='curl -s  https://api.my-ip.io/ip'       # myip:         Public facing IP Address
+alias myip='curl -s  https://api.my-ip.io/ip| lolcat'    # myip: Public facing IP Address
 alias netCons='lsof -i'                             # netCons:      Show all open TCP/IP sockets
 alias flushDNS='dscacheutil -flushcache'            # flushDNS:     Flush out the DNS Cache
 alias lsock='sudo /usr/sbin/lsof -i -P'             # lsock:        Display open sockets
