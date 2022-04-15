@@ -269,9 +269,8 @@ zstd
 )
 
 CASKS=(
-    brave-browser
     burp-suite
-    docker
+    #docker
     gimp
     google-chrome
     google-cloud-sdk
@@ -288,16 +287,15 @@ CASKS=(
     visual-studio-code
     vlc
     wireshark
-    ##objective-c security suite (non-cmd)
-    lulu
+    ##objective-c&dev security suite (non-cmd)
     reikey
     knockknock
     do-not-disturb
-    netiquette
-    oversight
+    little-snitch
+    micro-snitch
     blockblock
     kextviewr
-
+    cleanmymac
 )
 PYTHON_PACKAGES=(
     ipython
