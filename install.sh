@@ -25,7 +25,6 @@ if [ "$?" != "0" ]; then
   softwareupdate -i "${PROD}" --verbose;
 else
   echo "Xcode CLI tools OK"
-  softwareupdate -i "${PROD}" --verbose;
 fi
 }
 
