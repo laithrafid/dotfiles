@@ -315,29 +315,30 @@ brew_install(){
     echo "Installing packages..."
     brew install ${PACKAGES[@]}
     echo "Installing cask apps..."
-    sudo -u $SUDO_USER brew install --cask ${CASKS[@]}
+    sudo brew install --cask ${CASKS[@]}
     echo "Installing Python packages..."
-    sudo -u $SUDO_USER pip3 install --upgrade pip
-    sudo -u $SUDO_USER pip3 install --upgrade setuptools
-    sudo -u $SUDO_USER pip3 install ${PYTHON_PACKAGES[@]}
+    sudo pip3 install --upgrade pip
+    sudo pip3 install --upgrade setuptools
+    sudo pip3 install ${PYTHON_PACKAGES[@]}
     echo "Installing global npm packages..."
-    sudo -u $SUDO_USER npm install marked -g
+    sudo npm install marked -g
     echo "brew update"
     brew update
     echo "brew upgrade"
     brew upgrade
     npm install -g browser-sync
+    echo "installed"
 }
 
 brew_uninstall(){
     echo "Uninstalling Python packages..."
-    sudo -u $SUDO_USER pip3 uninstall ${PYTHON_PACKAGES[@]}
-    sudo -u $SUDO_USER pip3 uninstall setuptools
-    sudo -u $SUDO_USER pip3 uninstall  pip
+    sudo pip3 uninstall ${PYTHON_PACKAGES[@]}
+    sudo pip3 uninstall setuptools
+    sudo pip3 uninstall  pip
     echo "Uninstalling packages..."
     brew uninstall --force --ignore-dependencies ${PACKAGES[@]}
     echo "Uninstalling cask apps..."
-    sudo -u $SUDO_USER brew uninstall --ignore-dependencies --force --cask ${CASKS[@]}
+    sudo brew uninstall --ignore-dependencies --force --cask ${CASKS[@]}
 }
 
 create_symlinks(){
