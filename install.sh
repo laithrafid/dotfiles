@@ -13,19 +13,19 @@ install_xcode(){
 echo "Checking Xcode CLI tools"
 # Only run if the tools are not installed yet
 # To check that try to print the SDK path
-xcode-select --install && sleep 1
-osascript -e 'tell application "System Events"' -e 'tell process "Install Command Line Developer Tools"' -e 'keystroke return' -e 'click button "Agree" of window "License Agreement"' -e 'end tell' -e 'end tell'
 xcode-select -p &> /dev/null
 if [ "$?" != "0" ]; then
   echo "Xcode CLI tools not found. Installing them..."
-  touch /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress;
+  xcode-select --install && sleep 1
+  osascript -e 'tell application "System Events"' -e 'tell process "Install Command Line Developer Tools"' -e 'keystroke return' -e 'click button "Agree" of window "License Agreement"' -e 'end tell' -e 'end tell'
   PROD=$(softwareupdate -l |
-    grep "\*.*Command Line" |
-    tail -n 1 | sed 's/^[^C]* //')
-    echo "Prod: ${PROD}"
+  grep "\*.*Command Line" |
+  tail -n 1 | sed 's/^[^C]* //')
+  echo "Prod: ${PROD}"
   softwareupdate -i "$PROD" --verbose;
 else
   echo "Xcode CLI tools OK"
+  softwareupdate -i "$PROD" --verbose;
 fi
 }
 
@@ -33,7 +33,7 @@ install_brew(){
     echo  "installing brew Command Line Tool ...."
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"    
 }
-install_brew(){
+uninstall_brew(){
     echo  "installing brew Command Line Tool ...."
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/uninstall.sh)"    
 }
@@ -436,7 +436,6 @@ u)
     ;;
 c) 
     echo "cleanup started   ................"
-    myrepos d
     brew_uninstall
     vim +PluginClean +qall
     rm -rf ~/.vim/*
