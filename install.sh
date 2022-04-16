@@ -22,10 +22,10 @@ if [ "$?" != "0" ]; then
   grep "\*.*Command Line" |
   tail -n 1 | sed 's/^[^C]* //')
   echo "Prod: ${PROD}"
-  softwareupdate -i "$PROD" --verbose;
+  softwareupdate -i "${PROD}" --verbose;
 else
   echo "Xcode CLI tools OK"
-  softwareupdate -i "$PROD" --verbose;
+  softwareupdate -i "${PROD}" --verbose;
 fi
 }
 
