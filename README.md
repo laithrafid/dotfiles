@@ -58,7 +58,7 @@
 
 # dotfiles 
 - README.md < You are here
-- bash_profile < your profile
+- bash_profile < your bash_profile
 - gitconfig < git configs
 - gitignore < git ignores
 - inputrc
@@ -80,30 +80,10 @@
 /bin/bash -c  "$(curl -fsSL https://raw.githubusercontent.com/laithrafid/dotfiles/main/install.sh)"
 ```
 after copying line above you will given option to enter one of these inputs below:
-* INSTALL Choose  i
-* Update Choose u
-* To CleanUp choose c
+* install i
+* Update u
+* To CleanUp c
 
-
-### Prerequisites
-
-This is an example of how to list things you need to use the software and how to install them.
-* npm
-  ```sh
-  npm install npm@latest -g
-  ```
-
-### Installation
-
-1. This's if you want to know how it's done
-2. Clone the repo
-   ```sh
-   git clone https://github.com/laithrafid/dotfiles.git
-   ```
-3. give script perm and run install script
-   ```sh
-   install.sh
-   ```
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -111,6 +91,16 @@ This is an example of how to list things you need to use the software and how to
 
 <!-- USAGE EXAMPLES -->
 ## Usage
+
+1. This's if you want to know how it's done
+2. Clone the repo
+   ```bash
+   git clone https://github.com/laithrafid/dotfiles.git
+   ```
+3. give script permissions and run install script with i to install, u to update and c to cleanup/remove
+   ```bash
+   ./install.sh i 
+   ```
 
 
 
