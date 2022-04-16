@@ -314,7 +314,7 @@ brew_install(){
     echo "Installing packages..."
     brew install ${PACKAGES[@]}
     echo "Installing cask apps..."
-    sudo install --cask ${CASKS[@]}
+    brew install --cask ${CASKS[@]}
     echo "Installing Python packages..."
     sudo pip3 install --upgrade pip
     sudo pip3 install --upgrade setuptools
@@ -337,7 +337,7 @@ brew_uninstall(){
     echo "Uninstalling packages..."
     brew uninstall --force --ignore-dependencies ${PACKAGES[@]}
     echo "Uninstalling cask apps..."
-    sudo brew uninstall --ignore-dependencies --force --cask ${CASKS[@]}
+    brew uninstall --ignore-dependencies --force --cask ${CASKS[@]}
 }
 
 create_symlinks(){
