@@ -443,8 +443,7 @@ c)
     rm -rf $INSTALLDIR
     uninstall_brew
     echo "Uninstalling devtools"
-    sudo /Library/Developer/Shared/uninstall-devtools --mode=all
-    echo ""
+    sudo rm -rf /Library/Developer/CommandLineTools
     ;;
 esac
 
