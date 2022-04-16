@@ -13,6 +13,8 @@ install_xcode(){
 echo "Checking Xcode CLI tools"
 # Only run if the tools are not installed yet
 # To check that try to print the SDK path
+xcode-select --install && sleep 1
+osascript -e 'tell application "System Events"' -e 'tell process "Install Command Line Developer Tools"' -e 'keystroke return' -e 'click button "Agree" of window "License Agreement"' -e 'end tell' -e 'end tell'
 xcode-select -p &> /dev/null
 if [ "$?" != "0" ]; then
   echo "Xcode CLI tools not found. Installing them..."
@@ -27,6 +29,10 @@ else
 fi
 }
 
+install_brew(){
+    echo  "installing brew Command Line Tool ...."
+    curl -fsSL -o install.sh https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh
+}
 SUDO_USER=$(whoami)
 INSTALLDIR=/Users/$SUDO_USER/dotfiles
 PACKAGES=(  
@@ -285,16 +291,13 @@ CASKS=(
     vagrant
     virtualbox
     visual-studio-code
-    vlc
     wireshark
     ##objective-c&dev security suite (non-cmd)
     reikey
-    knockknock
+    blockblock
     do-not-disturb
     little-snitch
     micro-snitch
-    blockblock
-    kextviewr
     cleanmymac
 )
 PYTHON_PACKAGES=(
@@ -407,6 +410,7 @@ case $var in
 i)	
     echo "bootstraping started ................"
     install_xcode
+    install_brew
     brew_install
     if [ ! -d "$INSTALLDIR" ]; then 
 	    git clone https://github.com/laithrafid/dotfiles.git "$INSTALLDIR" 
