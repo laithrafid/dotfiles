@@ -65,7 +65,6 @@
 - install.sh < script to clone and install
 - tmux.conf < tmux configs
 - vimrc < vim configs
-
 8 files
 
 
@@ -76,6 +75,7 @@
 <!-- GETTING STARTED -->
 ## Getting Started
 
+TL$DR
 ```bash
 /bin/bash -c  "$(curl -fsSL https://raw.githubusercontent.com/laithrafid/dotfiles/main/install.sh)"
 ```
@@ -84,6 +84,7 @@ after copying line above you will given option to enter one of these inputs belo
 * Update u
 * To CleanUp c
 
+this script will install xcode-commandline tools, homebrew, install list of python packages, brew fomulas and casks, then setup vim plugins , and create symlinks to vimrc and tmux.config files in your home directory ` ~/.` . 
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -101,8 +102,6 @@ after copying line above you will given option to enter one of these inputs belo
    ```bash
    ./install.sh i 
    ```
-
-
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -144,7 +143,6 @@ Don't forget to give the project a star! Thanks again!
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 
-
 <!-- LICENSE -->
 ## License
 
@@ -168,8 +166,6 @@ Project Link: [https://github.com/laithrafid/dotfiles.git](https://github.com/la
 ## Acknowledgments
 
 * [Best-Readme-Template](https://github.com/othneildrew/Best-README-Template)
-* []()
-* []()
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
