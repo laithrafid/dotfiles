@@ -316,11 +316,11 @@ brew_install(){
     echo "Installing cask apps..."
     brew install --cask ${CASKS[@]}
     echo "Installing Python packages..."
-    sudo pip3 install --upgrade pip
-    sudo pip3 install --upgrade setuptools
-    sudo pip3 install ${PYTHON_PACKAGES[@]}
+    pip3 install --upgrade pip3
+    pip3 install --upgrade setuptools
+    pip3 install ${PYTHON_PACKAGES[@]}
     echo "Installing global npm packages..."
-    sudo npm install marked -g
+    npm install marked -g
     echo "brew update"
     brew update
     echo "brew upgrade"
@@ -331,9 +331,9 @@ brew_install(){
 
 brew_uninstall(){
     echo "Uninstalling Python packages..."
-    sudo pip3 uninstall ${PYTHON_PACKAGES[@]}
-    sudo pip3 uninstall setuptools
-    sudo pip3 uninstall  pip
+    pip3 uninstall ${PYTHON_PACKAGES[@]}
+    pip3 uninstall setuptools
+    pip3 uninstall  pip3
     echo "Uninstalling packages..."
     brew uninstall --force --ignore-dependencies ${PACKAGES[@]}
     echo "Uninstalling cask apps..."
