@@ -314,7 +314,7 @@ brew_install(){
     echo "Installing packages..."
     brew install ${PACKAGES[@]}
     echo "Installing cask apps..."
-    sudo brew install --cask ${CASKS[@]}
+    sudo install --cask ${CASKS[@]}
     echo "Installing Python packages..."
     sudo pip3 install --upgrade pip
     sudo pip3 install --upgrade setuptools
