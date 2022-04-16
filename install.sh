@@ -31,8 +31,13 @@ fi
 
 install_brew(){
     echo  "installing brew Command Line Tool ...."
-    curl -fsSL -o install.sh https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"    
 }
+install_brew(){
+    echo  "installing brew Command Line Tool ...."
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/uninstall.sh)"    
+}
+
 SUDO_USER=$(whoami)
 INSTALLDIR=/Users/$SUDO_USER/dotfiles
 PACKAGES=(  
@@ -326,16 +331,14 @@ brew_install(){
 }
 
 brew_uninstall(){
-    echo "Uninstalling packages..."
-    brew uninstall --force ----ignore-dependencies ${PACKAGES[@]}
-    echo "Uninstalling cask apps..."
-    sudo -u $SUDO_USER brew uninstall --ignore-dependencies --force --cask ${CASKS[@]}
     echo "Uninstalling Python packages..."
     sudo -u $SUDO_USER pip3 uninstall ${PYTHON_PACKAGES[@]}
     sudo -u $SUDO_USER pip3 uninstall setuptools
     sudo -u $SUDO_USER pip3 uninstall  pip
-    echo "Uninsatll brew"
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/uninstall.sh)"
+    echo "Uninstalling packages..."
+    brew uninstall --force --ignore-dependencies ${PACKAGES[@]}
+    echo "Uninstalling cask apps..."
+    sudo -u $SUDO_USER brew uninstall --ignore-dependencies --force --cask ${CASKS[@]}
 }
 
 create_symlinks(){
@@ -432,13 +435,16 @@ u)
     vim +PluginuInstall! +qall
     ;;
 c) 
-    echo "cleanup  started   ................"
-   # uninstall_homebrew
+    echo "cleanup started   ................"
+    myrepos d
     brew_uninstall
     vim +PluginClean +qall
     rm -rf ~/.vim/*
     rm -rf $INSTALLDIR
-    
+    uninstall_brew
+    echo "Uninstalling devtools"
+    sudo /Library/Developer/Shared/uninstall-devtools --mode=all
+    echo ""
     ;;
 esac
 
