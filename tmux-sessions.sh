@@ -20,7 +20,7 @@ then
   tmux select-pane -t 1
   tmux splitw -v
 
-  tmux send-keys -t 'mon' 'watch -n 1 -c  networkQuality -I en0 | lolcat' C-m
+  tmux send-keys -t 'mon' 'watch -n 1 losf -iUDP | lolcat' C-m
   tmux select-pane -t 1
   tmux splitw -v
   
