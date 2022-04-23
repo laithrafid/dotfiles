@@ -122,6 +122,7 @@ jpeg-xl
 jpegoptim
 jq
 kompose
+kops
 krb5
 kubernetes-cli
 lame
