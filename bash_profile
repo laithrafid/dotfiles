@@ -44,10 +44,11 @@ export WDIR=~/Desktop/code/
 #   -----------------------------
 #   2.  MAKE TERMINAL BETTER
 #   -----------------------------
-alias gcurl='curl -H "Authorization: Bearer $(gcloud auth print-access-token)" -H "Content-Type: application/json"'
+alias gcurl='curl -H "Authorization: Bearer $(gcloud auth print-access-token)" -H "Content-Type: application/json"' # gcurl for goole curling apis
 alias cdtm='bash ~/dotfiles/tmux-sessions.sh' # my Tmus session
-alias cdgo='cd $WDIR'			            # my work dir
+alias cdgo='cd $WDIR'			    # my work dir
 alias python='python3'                      # python
+alias tf='terraform'			    # terraform		
 alias cp='cp -iv'                           # Preferred 'cp' implementation
 alias mv='mv -iv'                           # Preferred 'mv' implementation
 alias mkdir='mkdir -pv'                     # Preferred 'mkdir' implementation
