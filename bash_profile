@@ -24,7 +24,7 @@
     export PS1="\[\033[36m\]\u\[\033[m\]@\[\033[32m\]\h:\[\033[33;1m\]\w\[\033[m\]\$ "
 #   Set Paths
 #   ------------------------------------------------------------
-    export PATH="/usr/local/sbin:/usr/local/bin/:$(go env GOPATH)/bin:$PATH"
+    export PATH="/opt/metasploit-framework/bin/:/usr/local/sbin:/usr/local/bin/:/Users/laithrafid/Library/Python/3.10/bin/:$(go env GOPATH)/bin:$PATH"
 
 #   Set default blocksize for ls, df, du
 #   from this: http://hints.macworld.com/comment.php?mode=view&cid=24491
