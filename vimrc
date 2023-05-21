@@ -8,10 +8,15 @@ set mouse=a
 filetype on
 filetype off
 syntax on
+
+" Enable copy and paste support with macOS clipboard
+set clipboard=unnamed
+
 let mapleader = ","
 let maplocalleader = "//"
 set backspace=indent,eol,start
 set rtp+=~/.vim/bundle/Vundle.vim
+set autoindent
 call vundle#begin()
 
 Plugin 'VundleVim/Vundle.vim'
