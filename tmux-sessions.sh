@@ -20,11 +20,11 @@ then
   tmux select-pane -t 1
   tmux splitw -v
 
-  tmux send-keys -t 'mon' 'watch -n 1 lsof -nP -iUDP | lolcat' C-m
+  tmux send-keys -t 'mon' 'watch -n 1 lsof +c0 -V -nP -iUDP | lolcat' C-m
   tmux select-pane -t 1
   tmux splitw -v
   
-  tmux send-keys -t 'mon' 'watch -n 1 lsof -nP -iTCP -sTCP:LISTEN,ESTABLISHED -n  | lolcat' C-m
+  tmux send-keys -t 'mon' 'watch -n 1 lsof +c0 -V -nP -iTCP -sTCP:LISTEN,ESTABLISHED -n  | lolcat' C-m
  # tmux send-keys -t 'mon' 'watch -n 1 docker system df' C-m
   tmux select-pane -t 1
 
