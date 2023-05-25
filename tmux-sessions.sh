@@ -16,7 +16,7 @@ then
   tmux splitw -v
  
   #tmux send-keys -t 'mon' 'watch -n 1 docker ps -aq | lolcat' C-m
-  tmux send-keys -t 'mon' 'watch -n 1 arp -a  | lolcat' C-m
+  tmux send-keys -t 'mon' 'watch -n 1 arp -lax  | lolcat' C-m
   tmux select-pane -t 1
   tmux splitw -v
 
