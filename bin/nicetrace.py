@@ -149,11 +149,11 @@ def debug(ip_address, timeout):
         command = ["traceroute", "-w", str(timeout), "-6", ip_address] if ':' in ip_address else ["traceroute", "-w", str(timeout), ip_address]
         process = subprocess.Popen(command)
         process.wait()
+    except KeyboardInterrupt:
+        print("\nTraceroute interrupted by user.")
     except subprocess.CalledProcessError as e:
         print(f"Error: Failed to perform traceroute: {e}")
         sys.exit(1)
-
-
 def perform_traceroute_concurrent(targets, timeout):
     threads = []
     for target in targets:
