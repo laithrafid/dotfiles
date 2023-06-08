@@ -1,201 +1,176 @@
 #!/usr/bin/python3
-import sys
-import subprocess
-import socket
-import whois
-import ipaddress
-from termcolor import colored
-import argparse
-import threading
-
-# Caching dictionary for WHOIS lookups
-whois_cache = {}
-
-
+'''
+write a pyhton3 script  to do these functions : 
+1. create a table (hop, Ip address ,class, Hostname, AS , Organization, Country, RTT ) with each column in different colour add columns to this table depends on traceroute options provided
+2. write this script to be run on windows , linux or osx (check tools need installed on os )
+3. Run traceroute with traceroute with ability for user to pass through options to run traceroute with host/ip provided 
+(if hostname provide then resolve to ipv4 or ipv6 depends on -4 or -6 option provided then run traceroute or traceroute6 ) 
+(if ipv4 or ipv6 provided then run traceroute for ipv4 or traceroute6 for ipv6) at the time of starting the script, 
+if no ip or hostname provided show a help and how to use this script (script_name = nicetrace.py) like this 
 def print_help():
-    # Display usage instructions and examples
-    print("Usage: python nicetrace.py [options] <hostname/IP>")
+    print("Usage: python nicetrace.py <hostname/IP>")
     print("Example: python nicetrace.py google.com")
     print("         python nicetrace.py 8.8.8.8")
     print("         python nicetrace.py 2001:4860:4860::8888  (IPv6)")
-    print("This script performs a traceroute to the given hostname/IP address and does a WHOIS lookup for each hop.")
-    print("The output is displayed in a table format.")
-    print("\nOptions:")
-    print("  -t TIMEOUT, --timeout TIMEOUT   Timeout value for traceroute (in seconds) (default: 2)")
-    print("  -d, --debug                     Enable debug mode (performs traceroute and runs platform traceroute)")
+    sys.exit(0)
+4. if there's no hop number in the begining of each line then fill it with empty space in hop column
+5. put ip in ip address columns and hostnames in hostname column 
+6. do whois on every ip of in ip column put result into table
+7. Add a function classify each ip in ip column to private or public and which class is it (A,B,C,D,E) for ipv4 or ipv6 (global, linklocal...etc)
+
+
+'''
+import sys
+import subprocess
+import socket
+import ipaddress
+from prettytable import PrettyTable
+from termcolor import colored
+
+
+def print_help():
+    print("This script is built to run on OSX and Python3")
+    print("Usage: python nicetrace.py <local options> <traceroute options> <hostname/IP>")
+    print("Example: python nicetrace.py google.com")
+    print("         python nicetrace.py 8.8.8.8")
+    print("         python nicetrace.py 2001:4860:4860::8888  (IPv6)")
+    print("         python nicetrace.py -d -P TCP -p 443 google.com")
+    print("<local options> -d/--debug -h/--help")
+    print("<traceroute options> [-adDeFInrSvx] [-A as_server] [-f first_ttl] [-g gateway] [-i iface]")
+    print("[-M first_ttl] [-m max_ttl] [-p port] [-P proto] [-q nqueries] [-s src_addr]")
+    print("[-t tos] [-w waittime] [-z pausemsecs] host [packetlen]")
     sys.exit(0)
 
 
-def resolve_hostname(hostname):
+def create_colored_table():
+    # Create table with colored columns
+    table = PrettyTable()
+    table.field_names = [
+        colored('hop', 'green'),
+        colored('Ip address', 'blue'),
+        colored('class', 'yellow'),
+        colored('kind', 'yellow'),
+        colored('Hostname', 'magenta'),
+        colored('AS', 'cyan'),
+        colored('Organization', 'red'),
+        colored('Country', 'green'),
+        colored('RTT', 'blue')
+    ]
+    return table
+
+
+def validate_hostname(hostname):
     try:
-        # Resolve the hostname to an IP address
-        return socket.gethostbyname(hostname)
-    except socket.gaierror as e:
-        print(f"Error: Failed to resolve the hostname: {e}")
-        sys.exit(1)
+        # Check if hostname is valid
+        socket.gethostbyname(hostname)
+        return True
+    except socket.error:
+        return False
 
 
-def get_whois_info(ip):
-    if ip in whois_cache:
-        return whois_cache[ip]
-
-    retry_times = 3
-    for _ in range(retry_times):
-        try:
-            # Perform a WHOIS lookup for the IP address
-            w = whois.whois(ip)
-            org = w.get('org', '')
-            netname = w.get('netname', '')
-            if org and netname and org.lower() == netname.lower():
-                netname = ''
-            whois_cache[ip] = (org, w.get('country', ''), w.get('city', ''))
-            return whois_cache[ip]
-        except whois.WhoisException:
-            continue
-
-    return '', '', ''
-
-
-def classify_ip(ip):
+def validate_ipv4(ipv4):
     try:
-        ip_address = ipaddress.ip_address(ip)
-        if ip_address.version == 6:
-            return classify_ipv6(ip_address)
-        elif ip_address.is_private:
-            return 'Private'
-        else:
-            return classify_ipv4(ip_address)
-    except ValueError:
-        return ''
+        # Check if IPv4 address is valid
+        ipaddress.IPv4Address(ipv4)
+        return True
+    except ipaddress.AddressValueError:
+        return False
 
 
-def classify_ipv4(ip):
-    first_octet = int(ip.exploded.split('.')[0])
-    if 1 <= first_octet <= 126:
-        return 'Pub (A)'
-    elif 128 <= first_octet <= 191:
-        return 'Pub (B)'
-    elif 192 <= first_octet <= 223:
-        return 'Pub (C)'
-    elif 224 <= first_octet <= 239:
-        return 'Pub (D)'
-    else:
-        return 'Pub (E)'
-
-
-def classify_ipv6(ip):
-    if ip.is_link_local:
-        return 'Link'
-    elif ip.is_site_local:
-        return 'Site'
-    elif ip.is_unique_local:
-        return 'Unique'
-    elif ip.is_multicast:
-        return 'Multicast'
-    else:
-        return 'Global'
-
-
-def perform_traceroute(ip_address, timeout):
+def validate_ipv6(ipv6):
     try:
-        command = ["traceroute", "-w", str(timeout), "-6", ip_address] if ':' in ip_address else ["traceroute", "-w", str(timeout), ip_address]
-        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
-        print_table_header()
-
-        try:
-            for line in iter(process.stdout.readline, ''):
-                line_parts = line.split()
-                if line_parts[0].isdigit():
-                    handle_line(line_parts)
-                elif '*' in line_parts:
-                    handle_line(['*'] * 4)
-                else:
-                    line_parts.insert(0, '')
-                    handle_line(line_parts)
-        except KeyboardInterrupt:
-            print("\nTraceroute interrupted by user.")
-    except subprocess.CalledProcessError as e:
-        print(f"Error: Failed to perform traceroute: {e}")
-        sys.exit(1)
-
-def print_table_line(hop, hostname, ip, rtt, org, country, city, classification):
-    # Format and print a line of the table
-    hop = colored(f"{hop:<5}", 'cyan')
-    hostname = colored(f"{hostname:<20}", 'yellow')
-    ip = colored(f"{ip:<15}", 'green')
-    whois_info = colored(f"{org or ''} ({country or ''} {city or ''})", 'blue')
-    classification = colored(f"{classification or ''}", 'cyan')
-    rtt = colored(f"{rtt:>8}", 'magenta')
-    print(f"{hop} | {hostname} | {ip} | {whois_info:<30} | {classification:<10} | {rtt}")
+        # Check if IPv6 address is valid
+        ipaddress.IPv6Address(ipv6)
+        return True
+    except ipaddress.AddressValueError:
+        return False
 
 
-def handle_line(line_parts):
-    hop, hostname, ip, rtt = line_parts[0], line_parts[1], line_parts[2].strip('()'), ' '.join(line_parts[3:])
-    org, country, city = get_whois_info(ip)
-    classification = classify_ip(ip) if ip != '*' else ''
-    print_table_line(hop, hostname, ip, rtt, org, country, city, classification)
+def extract_tr_options(options):
+    # Extract options other than -4, -6, -d, and -h
+    tr_options = [opt for opt in options if opt not in ['-4', '-6', '-d', '-h']]
+    return tr_options
 
 
-def print_table_header():
-    # Print the header line of the table
-    headers = ["Hop", "Hostname", "IP Addr", "WHOIS", "Class", "RTT"]
-    header_row = colored(f"{headers[0]:<5} | {headers[1]:<20} | {headers[2]:<15} | {headers[3]:<30} | {headers[4]:<10} | {headers[5]}", 'yellow')
-    print(f"\r{header_row}")
-    print("-" * len(header_row))
+def extract_local_options(options):
+    # Extract options other than -4, -6, -d, and -h
+    local_options = [opt for opt in options if opt in ['-4', '-6', '-d', '-h']]
+    return local_options
 
 
-def debug(ip_address, timeout):
-    try:
-        command = ["traceroute", "-w", str(timeout), "-6", ip_address] if ':' in ip_address else ["traceroute", "-w", str(timeout), ip_address]
-        process = subprocess.Popen(command)
-        process.wait()
-    except KeyboardInterrupt:
-        print("\nTraceroute interrupted by user.")
-    except subprocess.CalledProcessError as e:
-        print(f"Error: Failed to perform traceroute: {e}")
-        sys.exit(1)
-def perform_traceroute_concurrent(targets, timeout):
-    threads = []
-    for target in targets:
-        thread = threading.Thread(target=perform_traceroute, args=(target, timeout))
-        thread.start()
-        threads.append(thread)
+def run_traceroute(target, options):
+    # Run traceroute command on target with local options
+    command = ['traceroute']
+    command.extend(options)
+    command.append(target)
+    output = subprocess.check_output(command, universal_newlines=True)
+    return output
 
-    for thread in threads:
-        thread.join()
+
+def run_traceroute6(target, options):
+    # Run traceroute6 command on target
+    command = ['traceroute6']
+    command.extend(options)
+    command.append(target)
+    output = subprocess.check_output(command, universal_newlines=True)
+    return output
+
+
+def parse_output(output):
+    # Parse the traceroute output into a table
+    table = create_colored_table()
+    lines = output.splitlines()
+    for line in lines:
+        # Parse each line and extract relevant information
+        # Modify this part according to the output format of your traceroute command
+        # Example: line = ' 1  192.168.1.1  AS12345  example.com  10ms'
+        hop, ip, as_number, class_, kind, hostname, org, country, rtt = line.split()
+        table.add_row([hop, ip, class_, kind, hostname, as_number, org, country, rtt])
+    return table
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("targets", nargs="+", help="Hostname(s) or IP address(es)")
-    parser.add_argument("-t", "--timeout", type=int, default=2, help="Timeout value for traceroute (in seconds)")
-    parser.add_argument("-d", "--debug", action="store_true", help="Enable debug mode (performs traceroute and runs platform traceroute)")
+    options = sys.argv[1:-1]
+    target = sys.argv[-1]
 
-    args = parser.parse_args()
+    if '-h' in options or '--help' in options:
+        print_help()
 
-    targets = args.targets
-    timeout = args.timeout
-    debug_mode = args.debug
+    tr_options = extract_tr_options(options)
 
-    if debug_mode:
-        perform_traceroute_concurrent(targets, timeout)
-        for target in targets:
-            debug(target, timeout)
+    if validate_hostname(target):
+        if not options or '-4' in options:
+            if validate_ipv6(target):
+                output = run_traceroute6(target, tr_options)
+            else:
+                output = run_traceroute(target, tr_options)
+        elif '-6' in options:
+            if validate_ipv6(target):
+                output = run_traceroute6(target, tr_options)
+            else:
+                print("Invalid target provided for IPv6 traceroute.")
+                return
+        else:
+            print("Invalid options provided.")
+            return
+    elif validate_ipv4(target):
+        if not options or '-4' in options:
+            output = run_traceroute(target, tr_options)
+        else:
+            print("Invalid options provided for IPv4 target.")
+            return
+    elif validate_ipv6(target):
+        if not options or '-6' in options:
+            output = run_traceroute6(target, tr_options)
+        else:
+            print("Invalid options provided for IPv6 target.")
+            return
     else:
-        if len(sys.argv) != 2 or sys.argv[1].lower() == "help":
-            print_help()
+        print("Invalid target provided.")
+        return
 
-        for target in targets:
-            input_value = target
-            try:
-                socket.inet_pton(socket.AF_INET, input_value)
-            except socket.error:
-                try:
-                    socket.inet_pton(socket.AF_INET6, input_value)
-                except socket.error:
-                    input_value = resolve_hostname(input_value)
-
-            perform_traceroute(input_value, timeout)
+    table = parse_output(output)
+    print(table)
 
 
 if __name__ == '__main__':
