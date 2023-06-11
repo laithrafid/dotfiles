@@ -371,3 +371,5 @@ if [ -f $(brew --prefix)/etc/bash_completion ]; then
 fi
 
 
+
+eval "$(/usr/local/bin/brew shellenv)"

@@ -38,244 +38,242 @@ uninstall_brew(){
 
 SUDO_USER=$(whoami)
 INSTALLDIR=/Users/$SUDO_USER/dotfiles
-PACKAGES=(  
-awscli
-azure-cli
-ack
-aom
-apr
-apr-util
-argon2
-asciinema
-aspell
-autoconf
-autojump
-automake
-bash
-bash-completion
-bdw-gc
-berkeley-db
-brew-cask-completion
-brotli
-c-ares
-ca-certificates
-cairo
-cjson
-cmocka
-composer
-coreutils
-curl
-dav1d
-docbook
-docbook-xsl
-docker-completion
-doctl
-erlang
-ffmpeg
-findutils
-flac
-fontconfig
-freetds
-freetype
-frei0r
-fribidi
-fx
-gd
-gdbm
-gdk-pixbuf
-gettext
-gh
-ghostscript
-giflib
-gifsicle
-git
-glib
-gmp
-gnu-getopt
-gnu-indent
-gnu-sed
-gnu-tar
-gnu-which
-gnupg
-gnutls
-go
-gobject-introspection
-gradle
-graphite2
-graphviz
-grpcurl
-gts
-guile
-harfbuzz
-helm
-htop
-httpie
-hub
-icu4c
-ifstat
-imagemagick
-imath
-jasper
-jbig2dec
-jpeg
-jpeg-xl
-jpegoptim
-jq
-kompose
-kops
-krb5
-kubernetes-cli
-lame
-launchctl-completion
-leptonica
-libarchive
-libass
-libassuan
-libavif
-libb2
-libbluray
-libcbor
-libde265
-libevent
-libffi
-libfido2
-libgcrypt
-libgpg-error
-libheif
-libidn
-libidn2
-libksba
-liblqr
-libmemcached
-libnghttp2
-libogg
-libomp
-libpng
-libpq
-libpthread-stubs
-librist
-librsvg
-libsamplerate
-libsndfile
-libsodium
-libsoxr
-libssh2
-libtasn1
-libtiff
-libtool
-libunistring
-libusb
-libuv
-libvidstab
-libvmaf
-libvorbis
-libvpx
-libx11
-libxau
-libxcb
-libxdmcp
-libxext
-libxrender
-libyaml
-libzip
-little-cms2
-lolcat
-lsusb
-lua
-lynx
-lz4
-lzo
-m4
-markdown
-maven
-mbedtls
-memcached
-mercurial
-minikube
-mpdecimal
-mysql-client
-ncurses
-netpbm
-nettle
-nmap
-node
-npth
-nvm
-oniguruma
-opencore-amr
-openexr
-openjdk
-openjdk@11
-openjpeg
-openldap
-openssl@1.1
-optipng
-opus
-p11-kit
-packer
-packer-completion
-pango
-pcre
-pcre2
-perl
-php
-pinentry
-pixman
-pkg-config
-postgresql
-protobuf
-pypy
-python@3.10
-python@3.9
-rabbitmq
-rav1e
-readline
-rename
-ripgrep
-rtmpdump
-rubberband
-ruby
-s3cmd
-sdl2
-shared-mime-info
-six
-skaffold
-snappy
-speex
-sqlite
-srt
-ssh-copy-id
-tcl-tk
-terminal-notifier
-terraform
-terraform-docs
-tesseract
-the_silver_searcher
-theora
-tidy-html5
-tig
-tmux
-tree
-unbound
-unixodbc
-utf8proc
-vagrant-completion
-vim
-watch
-waypoint
-webp
-wget
-wxwidgets
-x264
-x265
-xmlto
-xorgproto
-xvid
-xz
-yamllint
-zeromq
-zimg
-zstd
+PACKAGES=(
+	awscli
+	azure-cli
+	ack
+	aom
+	apr
+	apr-util
+	argon2
+	asciinema
+	aspell
+	autoconf
+	autojump
+	automake
+	bash
+	bash-completion
+	bdw-gc
+	berkeley-db
+	brew-cask-completion
+	brotli
+	c-ares
+	ca-certificates
+	cairo
+	cjson
+	cmocka
+	composer
+	coreutils
+	curl
+	dav1d
+	docbook
+	docbook-xsl
+	docker-completion
+	doctl
+	erlang
+	ffmpeg
+	findutils
+	flac
+	fontconfig
+	freetds
+	freetype
+	frei0r
+	fribidi
+	fx
+	gd
+	gdbm
+	gdk-pixbuf
+	gettext
+	gh
+	ghostscript
+	giflib
+	gifsicle
+	git
+	glib
+	gmp
+	gnu-getopt
+	gnu-indent
+	gnu-sed
+	gnu-tar
+	gnu-which
+	gnupg
+	gnutls
+	go
+	gobject-introspection
+	gradle
+	graphite2
+	graphviz
+	grpcurl
+	gts
+	guile
+	harfbuzz
+	helm
+	htop
+	httpie
+	hub
+	icu4c
+	ifstat
+	imagemagick
+	imath
+	jasper
+	jbig2dec
+	jpeg
+	jpeg-xl
+	jpegoptim
+	jq
+	kompose
+	kops
+	krb5
+	kubernetes-cli
+	lame
+	launchctl-completion
+	leptonica
+	libarchive
+	libass
+	libassuan
+	libavif
+	libb2
+	libbluray
+	libcbor
+	libde265
+	libevent
+	libffi
+	libfido2
+	libgcrypt
+	libgpg-error
+	libheif
+	libidn
+	libidn2
+	libksba
+	liblqr
+	libmemcached
+	libnghttp2
+	libogg
+	libomp
+	libpng
+	libpq
+	libpthread-stubs
+	librist
+	librsvg
+	libsamplerate
+	libsndfile
+	libsodium
+	libsoxr
+	libssh2
+	libtasn1
+	libtiff
+	libtool
+	libunistring
+	libusb
+	libuv
+	libvidstab
+	libvmaf
+	libvorbis
+	libvpx
+	libx11
+	libxau
+	libxcb
+	libxdmcp
+	libxext
+	libxrender
+	libyaml
+	libzip
+	little-cms2
+	lolcat
+	lsusb
+	lua
+	lynx
+	lz4
+	lzo
+	m4
+	markdown
+	maven
+	mbedtls
+	memcached
+	mercurial
+	minikube
+	mpdecimal
+	mysql-client
+	ncurses
+	netpbm
+	nettle
+	nmap
+	node
+	npth
+	nvm
+	oniguruma
+	opencore-amr
+	openexr
+	openjdk
+	openjdk@11
+	openjpeg
+	openldap
+	openssl@1.1
+	optipng
+	opus
+	p11-kit
+	packer
+	packer-completion
+	pango
+	pcre
+	pcre2
+	perl
+	php
+	pinentry
+	pixman
+	pkg-config
+	postgresql
+	protobuf
+	python@3.9
+	rabbitmq
+	rav1e
+	readline
+	rename
+	ripgrep
+	rtmpdump
+	rubberband
+	ruby
+	s3cmd
+	sdl2
+	shared-mime-info
+	six
+	skaffold
+	snappy
+	speex
+	sqlite
+	srt
+	ssh-copy-id
+	tcl-tk
+	terminal-notifier
+	terraform
+	terraform-docs
+	tesseract
+	the_silver_searcher
+	theora
+	tidy-html5
+	tig
+	tmux
+	tree
+	unbound
+	unixodbc
+	utf8proc
+	vagrant-completion
+	vim
+	watch
+	waypoint
+	webp
+	wget
+	wxwidgets
+	x264
+	x265
+	xmlto
+	xorgproto
+	xvid
+	xz
+	yamllint
+	zeromq
+	zimg
+	zstd
 )
 
 CASKS=(
@@ -312,6 +310,7 @@ PYTHON_PACKAGES=(
 
 
 brew_install(){
+	brew tap homebrew/core
     echo "Installing packages..."
     brew install ${PACKAGES[@]}
     echo "Installing cask apps..."
