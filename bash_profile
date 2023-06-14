@@ -287,7 +287,7 @@ alias showBlocked='sudo ipfw list'                  # showBlocked:  All ipfw rul
          echo -e "\n_________________________________________________________" 
          echo -e "\n${RED}DNS Resolvers:$NC " ; scutil --dns
          echo -e "\n_________________________________________________________" 
-         echo -e "\n${RED}is there a proxt: $NC " ; scutil --proxy
+         echo -e "\n${RED}is there a proxy: $NC " ; scutil --proxy
          echo
     }
 
