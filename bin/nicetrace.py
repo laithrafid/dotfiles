@@ -25,7 +25,6 @@ import sys
 import subprocess
 import socket
 import ipaddress
-import whois
 from prettytable import PrettyTable
 from termcolor import colored
 
@@ -54,6 +53,7 @@ def create_colored_table():
         colored('IP Address', 'blue'),
         colored('Class', 'yellow'),
         colored('Organization', 'red'),
+        colored('Netname', 'yellow'),
         colored('Country', 'green'),
         colored('RTT', 'blue')
     ]
@@ -63,24 +63,38 @@ def create_colored_table():
     return table
 
 def get_whois_info(IP_Address):
-    organization = ''
-    country = ''
-
+    Organization = ''
+    Netname = ''
+    Country = ''
+    #print('this Organization and Country before for IP_Address', IP_Address, Organization, Country)
     try:
-        w = whois.whois(IP_Address)
-        if 'org' in w:
-            organization = w['org']
-            if organization is None:
-                organization = ''
-        if 'country' in w:
-            country = w['country']
-            if country is None:
-                country = ''
+        output = subprocess.check_output(['/usr/bin/whois', IP_Address], universal_newlines=True)
+        #print('WHOIS Output for {}:'.format(IP_Address))
+        #print(output)
+
+        output_lines = output.split('\n')
+        for line in output_lines:
+            if 'OrgName:' in line:
+                Organization = line.split(":")[1].strip()
+            elif'org-name:' in line:
+                Organization = line.split(":")[1].strip()
+            elif 'org:' in line:
+                Organization = line.split(":")[1].strip()
+            elif 'netname:' in line:
+                Netname = line.split(':', 1)[1].strip()
+            elif 'NetName' in line:
+                Netname = line.split(':', 1)[1].strip()
+            elif 'country:' in line:
+                Country = line.split(':', 1)[1].strip()
+            elif 'Country:' in line:
+                Country = line.split(':', 1)[1].strip()
+
+        Organization = Organization if Organization else ''
+        Netname = Netname if Netname else ''
+        Country = Country if Country else ''
     except Exception:
         pass
-
-    return organization, country
-
+    return Organization, Netname, Country
 
 def validate_hostname(hostname):
     try:
@@ -118,18 +132,24 @@ def extract_local_options(options):
 
 def run_traceroute(target, options):
     # Run traceroute command on target with local options
+    #print('Now running traceroute')
     command = ['traceroute']
     command.extend(options)
     command.append(target)
+    #print(f"Running command: {' '.join(command)}")
     output = subprocess.check_output(command, universal_newlines=True)
+    #print('Here is the output of traceroute:', output)
     return output
 
 def run_traceroute6(target, options):
     # Run traceroute6 command on target
+    #print('now running traceroute6')
     command = ['traceroute6']
     command.extend(options)
     command.append(target)
+    #print(f"Running command: {' '.join(command)}")
     output = subprocess.check_output(command, universal_newlines=True)
+    #print('hereis the output of traceroute6', output)
     return output
 
 def classify_ipv4(ipv4_address):
@@ -183,10 +203,17 @@ def parse_output_ipv4(output):
     lines = output.splitlines()
     for line in lines:
         split_line = line.split()
-        if line.startswith('*'):
+        if line.startswith('*') or split_line[1] == '*':
             # Handle lines starting with stars
-            table.add_row(['*' for _ in range(8)])  # Add empty space in each column
+            Hop = split_line[0] if len(split_line) > 0 and split_line[0].isdigit() else ' '
+            table.add_row([Hop] + ['*'] * 8)  # Add empty space in each column
         else:
+            '''good for debuging
+            print('split_line.[0]:', split_line[0])
+            print('split_line.[1]:', split_line[1])
+            print('split_line.[2]:', split_line[2])
+            print('split_line.[3:]:', split_line[3:])
+            '''
             Hop = split_line[0] if len(split_line) > 0 and split_line[0].isdigit() else ' '
             AS = ''
             Hostname = ''
@@ -196,16 +223,18 @@ def parse_output_ipv4(output):
                     AS = split_line[1]
                     Hostname = split_line[2] if len(split_line) > 2 else ''
                     IP_Address = split_line[3].strip('()') if len(split_line) > 3 else ''
-                    RTT = ','.join(split_line[4:]) if len(split_line) > 4 else ''
+                    RTT = ' '.join(split_line[4:]) if len(split_line) > 4 else ''
+                    Class = classify_ipv4(split_line[3].strip('()'))
+                    Organization, Netname, Country = get_whois_info(split_line[3].strip('()'))
 
                 else:
                     AS = split_line[0] if split_line[0].startswith('[') else ''
                     Hostname = split_line[1] if len(split_line) > 1 else ''
                     IP_Address = split_line[2].strip('()') if len(split_line) > 2 else ''
-                    RTT = ','.join(split_line[3:]) if len(split_line) > 3 else ''
-            Class = classify_ipv4(IP_Address)
-            Organization, Country = get_whois_info(split_line[2].strip('()'))
-            table.add_row([Hop, AS, Hostname, IP_Address, Class, Organization, Country, RTT])
+                    RTT = ' '.join(split_line[3:]) if len(split_line) > 3 else ''
+                    Class = classify_ipv4(split_line[2].strip('()'))
+                    Organization, Netname, Country = get_whois_info(split_line[2].strip('()'))
+            table.add_row([Hop, AS, Hostname, IP_Address, Class, Organization, Netname, Country, RTT])
     return table
 
 
@@ -215,67 +244,72 @@ def parse_output_ipv6(output):
     lines = output.splitlines()
     for line in lines:
         split_line = line.split()
-        if line.startswith('*'):
+        if line.startswith('*') or split_line[1] == '*':
             # Handle lines starting with stars
-            table.add_row(['' for _ in range(8)])  # Add empty space in each column
-        else:
             Hop = split_line[0] if len(split_line) > 0 and split_line[0].isdigit() else ' '
-            Hostname = split_line[1] if len(split_line) > 1 else ''
-            IP_Address = split_line[2].strip('()') if len(split_line) > 2 else ''
-            RTT = ' '.join(split_line[3:]) if len(split_line) > 3 else ''
-            Class = classify_ipv6(IP_Address)
-            Organization, Country = get_whois_info(split_line[2].strip('()'))
-            table.add_row([Hop, AS, Hostname, IP_Address, Class, Organization, Country, RTT])
+            table.add_row([Hop] + ['*'] * 8)   # Add empty space in each column
+        else:
+            '''good for debugging
+            print('split_line.[0]:', split_line[0])
+            print('split_line.[1]:', split_line[1])
+            print('split_line.[2]:', split_line[2])
+            print('split_line.[3:]:', split_line[3:])
+            '''
+            Hop = split_line[0] if len(split_line) > 0 and split_line[0].isdigit() else ' '
+            AS = ''
+            Hostname = ''
+            IP_Address = ''
+            if Hop == ' ':
+                Hostname = split_line[0] if len(split_line) > 1 else ''
+                IP_Address = split_line[1].strip('()') if len(split_line) > 2 else ''
+                RTT = ' '.join(split_line[2:]) if len(split_line) > 3 else ''
+                Class = classify_ipv6(split_line[1].strip('()'))
+                Organization, Netname, Country = get_whois_info(split_line[1].strip('()'))
+            else:
+                Hostname = split_line[1] if len(split_line) > 1 else ''
+                IP_Address = split_line[2].strip('()') if len(split_line) > 2 else ''
+                RTT = ' '.join(split_line[3:]) if len(split_line) > 3 else ''
+                Class = classify_ipv4(split_line[2].strip('()'))
+                Organization, Netname, Country = get_whois_info(split_line[2].strip('()'))
+            table.add_row([Hop, AS, Hostname, IP_Address, Class, Organization, Netname, Country, RTT])
     return table
 
 def main():
     options = sys.argv[1:-1]
     target = sys.argv[-1]
 
-    if '-how' in options or '--how' in options:
+    if '-how' in target or '-how' in options or '--how' in target or '--how' in options :
         print_help()
 
     tr_options = extract_tr_options(options)
 
-    if socket.gethostname() == target or socket.gethostbyname(socket.gethostname()) == target:
-        print("Target IP address cannot be the same as the local machine.")
-        sys.exit(1)
-
     if validate_hostname(target):
         if not options or '-4' in options:
-            if validate_ipv6(target):
-                output = run_traceroute6(target, (tr_options + ['-l']))
-                table = parse_output_ipv6(output)
-                print(table)
-            else:
                 output = run_traceroute(target, (tr_options + ['-a', '-e']))
                 table = parse_output_ipv4(output)
                 print(table)
         elif '-6' in options:
-            if validate_ipv6(target):
                 output = run_traceroute6(target, (tr_options + ['-l']))
                 table = parse_output_ipv6(output)
                 print(table)
-            else:
-                print("Invalid target provided for IPv6 traceroute.")
         else:
-            print("Invalid options provided.")
+            print("Invalid options provided. nicetrace --how for help")
     elif validate_ipv4(target):
         if not options or '-4' in options:
-            output = run_traceroute(target, (tr_options + ['-l']))
+            output = run_traceroute(target, (tr_options + ['-a', '-e']))
             table = parse_output_ipv4(output)
             print(table)
         else:
-            print("Invalid options provided for IPv4 target.")
+            print("Invalid options provided for IPv4 target. nicetrace --how for help")
     elif validate_ipv6(target):
         if not options or '-6' in options:
             output = run_traceroute6(target, (tr_options + ['-l']))
             table = parse_output_ipv6(output)
             print(table)
         else:
-            print("Invalid options provided for IPv6 target.")
+            print("Invalid options provided for IPv6 target. nicetrace --how for help")
     else:
-        print("Invalid target provided.")
+        print("Invalid target provided. nicetrace --how for help")
 
 if __name__ == '__main__':
     main()
