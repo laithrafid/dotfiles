@@ -282,7 +282,7 @@ CASKS=(
     gimp
     google-chrome
     google-cloud-sdk
-    microsoft-remote-desktop
+    #microsoft-remote-desktop
     mysqlworkbench
     openphone
     postman
@@ -297,10 +297,10 @@ CASKS=(
     ##objective-c&dev security suite (non-cmd)
     reikey
     blockblock
-    do-not-disturb
+    #do-not-disturb
     little-snitch
     micro-snitch
-    cleanmymac
+    #cleanmymac
 )
 PYTHON_PACKAGES=(
     ipython
