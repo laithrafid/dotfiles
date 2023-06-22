@@ -84,18 +84,23 @@ def list_config_files(directory):
     config_files = []
     for root, _, files in os.walk(directory):
         for file in files:
-            if file.endswith('.plist'):
+            if file.endswith('.plist') and not file.endswith('.swp'):
                 plist_path = os.path.join(root, file)
                 config_files.append(plist_path)
     return config_files
 
 
-def get_plist_info(plist_path):
-    with open(plist_path, 'rb') as plist_file:
-        plist_data = plist_file.read()
-        plist = plistlib.loads(plist_data)
-        return plist
 
+def get_plist_info(plist_path):
+    try:
+        with open(plist_path, 'rb') as plist_file:
+            plist_data = plist_file.read()
+            plist = plistlib.loads(plist_data)
+            return plist
+    except Exception as e:
+        print(f"Error parsing plist file: {plist_path}")
+        print(f"Error message: {str(e)}")
+        return None
 
 def generate_table():
     headers = ["#", "Level", "Directory of Plist", "PID", "Process", "State", "Domain", "Open files by Process"]
@@ -115,30 +120,35 @@ def generate_table():
         config_files = list_config_files(directory)
         for plist_path in config_files:
             plist_info = get_plist_info(plist_path)
-            process_name = plist_info.get("Label", "")
-            process_pid, state, domain = get_process_info(process_name)
-            process_open_files = ""
+            if plist_info is None:
+                print(f"problematic Skipping plist file: {plist_path}")
+                print("Genertating table with other plists")
+                continue  # Skip this plist file if parsing fails
+            if plist_info is not None:
+                process_name = plist_info.get("Label", "")
+                process_pid, state, domain = get_process_info(process_name)
+                process_open_files = ""
 
-            level_colored = colored(level, "yellow")
-            plist_path_colored = colored(plist_path, "cyan")
-            process_pid_colored = colored(process_pid, "green") if process_pid else ""
-            process_name_colored = colored(process_name, "magenta")
-            state_colored = colored(state, "blue") if state else ""
-            domain_colored = colored(domain, "blue") if domain else ""
-            process_open_files_colored = colored(process_open_files, "blue")
+                level_colored = colored(level, "yellow")
+                plist_path_colored = colored(plist_path, "cyan")
+                process_pid_colored = colored(process_pid, "green") if process_pid else ""
+                process_name_colored = colored(process_name, "magenta")
+                state_colored = colored(state, "blue") if state else ""
+                domain_colored = colored(domain, "blue") if domain else ""
+                process_open_files_colored = colored(process_open_files, "blue")
 
-            table_data.append([
-                str(row_number),
-                level_colored,
-                plist_path_colored,
-                process_pid_colored,
-                process_name_colored,
-                state_colored,
-                domain_colored,
-                process_open_files_colored
-            ])
+                table_data.append([
+                    str(row_number),
+                    level_colored,
+                    plist_path_colored,
+                    process_pid_colored,
+                    process_name_colored,
+                    state_colored,
+                    domain_colored,
+                    process_open_files_colored
+                ])
 
-            row_number += 1
+                row_number += 1
 
     return tabulate(table_data, headers=headers, tablefmt="psql")
 
