@@ -79,6 +79,7 @@ from tabulate import tabulate
 from termcolor import colored
 
 #################### Utility Functions:
+
 def print_help():
     print("Usage: python ugsec.py [option] [arguments]\n")
     print("Options:")
@@ -118,7 +119,6 @@ def list_config_files(directory):
     return config_files
 
 #################### Information Retrieval Functions:
-
 
 def get_user_info(usernames=None):
     user_info = []
@@ -162,7 +162,6 @@ def get_admin_accounts():
 
     return admins
 
-
 def get_group_info():
     try:
         command = "dscl . -list /Groups"
@@ -201,7 +200,6 @@ def get_user_groups(username):
             groups.append(group.gr_name)
     return ", ".join(groups)
 
-
 def get_user_pid(username):
     try:
         command = f"pgrep -u {username}"
@@ -210,7 +208,6 @@ def get_user_pid(username):
         return ", ".join(pids)
     except subprocess.CalledProcessError:
         return "N/A"
-
 
 def get_last_used(username):
     if platform.system() == "Darwin":  # macOS
@@ -304,7 +301,6 @@ def get_open_files(username, pid_filter=None):
     except subprocess.CalledProcessError:
         return []  # Command execution failed, return empty list
 
-
 def get_group_members(groupname):
     try:
         output = subprocess.check_output(["dscl", ".", "-read", f"/Groups/{groupname}", "GroupMembership"])
@@ -315,8 +311,6 @@ def get_group_members(groupname):
     except subprocess.CalledProcessError:
         pass
     return []
-
-
 
 def get_launchctl_manager_info():
     try:
@@ -333,7 +327,6 @@ def get_launchctl_manager_info():
 
     except subprocess.CalledProcessError:
         return None
-
 
 def get_process_info(process):
     try:
@@ -397,7 +390,6 @@ def get_plist_info(plist_path):
 
 #################### Display Functions:
 
-
 def display_user_table(data, condition_func=None , truncate=True):
     headers = list(data[0].keys())
     headers.insert(0, "#")  # Add "#" column header
@@ -436,7 +428,6 @@ def display_user_table(data, condition_func=None , truncate=True):
     table.align = "l"
     table.max_width = 100
     return table
-
 
 def display_group_table(group_info):
     group_table = PrettyTable(["#", "Group Name", "Users","Comment"])
@@ -498,11 +489,9 @@ def print_user_table(data, condition_func=None, truncate=True):
     table = display_user_table(data, condition_func, truncate)
     print(table)
 
-
 def print_group_table():
     group_info = get_group_info()
     display_group_table(group_info)
-
 
 def print_group_info(group_info):
     if not group_info:
@@ -521,7 +510,6 @@ def print_group_info(group_info):
         table.add_row([colored_key, colored_value])
 
     print(table)
-
 
 def print_open_files(open_files):
     if not open_files:
@@ -556,7 +544,6 @@ def print_password_policy():
         os.system("sudo grep '^PASS_MAX_DAYS\|^PASS_MIN_DAYS\|^PASS_WARN_AGE' /etc/login.defs")
     elif platform.system() == "Darwin":
         os.system("pwpolicy getaccountpolicies")
-
 
 def print_plist_table():
     headers = ["#", "Level", "Directory of Plist", "PID", "Process", "State", "Domain", "Open files by Process"]
@@ -653,10 +640,6 @@ def add_user(username):
     except subprocess.CalledProcessError:
         print(f"Failed to add user '{username}' to the group '{groupname}' with additional options.")
 
-
-
-import subprocess
-
 def add_group(groupname):
     try:
         subprocess.check_call(["sudo", "dscl", ".", "-create", f"/Groups/{groupname}"])
@@ -688,7 +671,6 @@ def add_group(groupname):
     except subprocess.CalledProcessError:
         print(f"Failed to add group '{groupname}' with additional options.")
 
-
 def delete_user_memberships(groupname):
     group_members = get_group_members(groupname)
     if not group_members:
@@ -717,7 +699,6 @@ def delete_user_memberships(groupname):
             print(f"User '{user}' deleted from group '{groupname}' successfully.")
         except subprocess.CalledProcessError:
             print(f"Failed to delete user '{user}' from group '{groupname}'.")
-
 
 def delete_users(usernames):
     deleted_users = []
@@ -767,10 +748,7 @@ def delete_groups(groupnames):
     if deleted_users:
         print(f"Deleted user(s): {', '.join(deleted_users)}")
 
-
-
 #################### User and Group Information Functions:
-
 
 def get_user_info_by_username(usernames):
     if isinstance(usernames, str):
@@ -819,7 +797,6 @@ def get_user_info_by_username(usernames):
             else:
                 print(f"No open files found for User '{username}'.")
 
-
 def get_group_info_by_groupname(groupname):
     if groupname.isdigit() and 0 < int(groupname) <= len(group_info):
         index = int(groupname) - 1
@@ -833,9 +810,7 @@ def get_group_info_by_groupname(groupname):
         except subprocess.CalledProcessError:
             print(colorize_column(f"Group '{groupname}' not found.", True, Fore.RED))  # Add 'True' as the second argument
 
-
 #################### Main Function:
-
 
 def main():
     init()
