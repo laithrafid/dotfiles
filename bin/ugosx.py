@@ -8,6 +8,7 @@ truncate_text()
 Information Retrieval Functions:
 
 get_user_info()
+get_admin_accounts()
 get_group_info()
 get_user_groups()
 get_user_pid()
@@ -16,6 +17,7 @@ get_network_services_udp()
 get_network_services_tcp()
 get_open_files()
 get_group_members()
+
 Display Functions:
 
 display_user_table()
@@ -26,6 +28,8 @@ print_user_table()
 print_group_table()
 print_group_info()
 print_open_files()
+print_password_policy()
+
 User and Group Management Functions:
 
 add_user()
@@ -33,36 +37,40 @@ add_group()
 delete_user_memberships()
 delete_users()
 delete_groups()
+
 User and Group Information Functions:
 
 get_user_info_by_username()
 get_group_info_by_groupname()
+
 Main Function:
 
 main()
 '''
+import os
 import pwd
 import grp
 import platform
 import sys
-from prettytable import PrettyTable
-from colorama import init, Fore, Style
 import subprocess
 import datetime
+from prettytable import PrettyTable
+from colorama import init, Fore, Style
 
 #################### Utility Functions:
 def print_help():
-    print("Usage: python script.py [option] [arguments]\n")
+    print("Usage: python ugosx.py [option] [arguments]\n")
     print("Options:")
     print("  -i, --interactive      Run the script in interactive mode")
-    print("  -t, --users-table      Print the table of all users")
-    print("  -T, --group-table      Print the table of all groups")
-    print("  -d, --delete-users     Delete user(s) specified by username(s)")
-    print("  -D, --delete-groups    Delete group(s) specified by group name(s)")
-    print("  -g, --get-user-info    Get detailed information about a specific user")
-    print("  -G, --get-group-info   Get detailed information about a specific group")
-    print("  -a, --add-user         Add a new user with the specified username")
-    print("  -A, --add-group        Add a new group with the specified group name")
+    print("  -ut, --users-table      Print the table of all users")
+    print("  -ud, --users_discovery  print users who are Administrators and more")
+    print("  -gt, --group-table      Print the table of all groups")
+    print("  -du, --delete-users     Delete user(s) specified by username(s)")
+    print("  -dg, --delete-groups    Delete group(s) specified by group name(s)")
+    print("  -gu, --get-user-info    Get detailed information about a specific user")
+    print("  -gg, --get-group-info   Get detailed information about a specific group")
+    print("  -au, --add-user         Add a new user with the specified username")
+    print("  -ag, --add-group        Add a new group with the specified group name")
     print("  -dum, --delete-user-memberships    Delete user memberships from a group")
     print("  -h, --help             Show help")
 
@@ -104,6 +112,24 @@ def get_user_info(usernames=None):
         user_info.append(user_entry)
         processed_users.add(user.pw_name)
     return user_info
+
+def get_admin_accounts():
+    admins = []
+    if platform.system() == "Windows":
+        import wmi
+        w = wmi.WMI()
+        for group in w.Win32_Group():
+            if group.Name == "Administrators":
+                admins = [a.Name for a in group.associators(wmi_result_class="Win32_UserAccount")]
+    elif platform.system() == "Linux":
+        with open('/etc/group', 'r') as file:
+            for line in file:
+                if line.startswith('sudo:'):
+                    admins = line.split(':')[1].strip().split(',')
+    elif platform.system() == "Darwin":
+        admins = subprocess.check_output(['dscl', '.', 'read', '/Groups/admin', 'GroupMembership']).decode().split()[1:]
+
+    return admins
 
 
 def get_group_info():
@@ -413,6 +439,13 @@ def print_open_files(open_files):
         print("Open Files:")
         print(table)
 
+def print_password_policy():
+    if platform.system() == "Windows":
+        os.system("net accounts")
+    elif platform.system() == "Linux":
+        os.system("sudo grep '^PASS_MAX_DAYS\|^PASS_MIN_DAYS\|^PASS_WARN_AGE' /etc/login.defs")
+    elif platform.system() == "Darwin":
+        os.system("pwpolicy getaccountpolicies")
 
 #################### User and Group Management Functions:
 
@@ -577,38 +610,53 @@ def delete_groups(groupnames):
 #################### User and Group Information Functions:
 
 
-def get_user_info_by_username(username):
-    try:
-        user_entry = pwd.getpwnam(username)
-        user_info = get_user_info([username])[0]
+def get_user_info_by_username(usernames):
+    if isinstance(usernames, str):
+        usernames = [usernames]  # Convert single username to a list
 
-        print("User Information:")
-        print_horizontal_user_table(user_info)
+    user_info = []
+    for username in usernames:
+        try:
+            user_entry = pwd.getpwnam(username)
+            user_info.append(get_user_info([username])[0])
+        except KeyError:
+            print(f"User '{username}' not found.")
 
-        #print("Network Services (UDP):")
+    if not user_info:
+        return
+
+    for user_entry in user_info:
+        username = user_entry["Name"]
+        print(f"User: {username}")
+        print_horizontal_user_table(user_entry)
+
+        # Print network services (UDP)
         udp_services = get_network_services_udp(username)
-        display_network_services(udp_services, "UDP")        
+        display_network_services(udp_services, "UDP")
 
-        #print("Network Services (TCP):")
+        # Print network services (TCP)
         tcp_services = get_network_services_tcp(username)
         display_network_services(tcp_services, "TCP")
 
         open_files = get_open_files(username)
         if len(open_files) > 20:
-            pid_filter = input("There are more than 20 open files. Enter a specific PID to filter the open files, or enter 'all' to print all open files: ")
+            pid_filter = input("There are more than 20 open files. Enter a specific PID to filter the open files, or enter 'all' to print all open files (press Enter to skip): ")
             if pid_filter.lower() == "all":
                 print(f"Open Files for User '{username}':")
                 print_open_files(open_files)
-            else:
+            elif pid_filter:  # Check if the user entered a specific PID
                 filtered_files = get_open_files(username, pid_filter)
                 print(f"Open Files for User '{username}' (Filtered by PID {pid_filter}):")
                 print_open_files(filtered_files)
+            else:
+                print("You skipped the open file listing.")
         else:
-            print(f"Open Files for User '{username}':")
-            print_open_files(open_files)
+            if open_files:
+                print(f"Open Files for User '{username}':")
+                print_open_files(open_files)
+            else:
+                print(f"No open files found for User '{username}'.")
 
-    except KeyError:
-        print(f"User '{username}' not found.")
 
 def get_group_info_by_groupname(groupname):
     if groupname.isdigit() and 0 < int(groupname) <= len(group_info):
@@ -700,17 +748,33 @@ def main():
 
     elif len(sys.argv) >= 2:
         option = sys.argv[1]
-        if option in ['-t', '--users-table']:
+        if option in ['-ut', '--users-table']:
             print("User Information:")
             user_info = get_user_info([])
             print_user_table(user_info, condition_func=lambda shell: shell != "/usr/bin/false", truncate=True)
             total_users = len(user_info)
             print(f"Total number of users: {total_users}")
         
-        elif option in ['-T', '--group-table']:
+        elif option in ['-gt', '--group-table']:
             print_group_table()
         
-        elif option in ['-d', '--delete-users']:
+        elif option in ['-ud', '--users_discovery']:
+            # Get list of Administrator Accounts
+            admins = get_admin_accounts()
+            colored_admins = colorize_column(", ".join(admins), True, Fore.RED)
+            print("administrators accounts:", colored_admins)
+            # Prompt for more info about administrators
+            prompt = "Do you want more information about the administrators? (y/n): "
+            choice = input(prompt)
+
+            if choice.lower() == 'y':
+                # Prompt for usernames
+                get_user_info_by_username(admins)
+            else:
+                # Print Password Policy
+                print("Password Policy:")
+                print_password_policy()
+        elif option in ['-du', '--delete-users']:
             if len(sys.argv) < 3:
                 print("Error: username not provided.")
                 print_help()
@@ -718,7 +782,7 @@ def main():
             usernames = sys.argv[2:]
             delete_users(usernames)
 
-        elif option in ['-D', '--delete-groups']:
+        elif option in ['-dg', '--delete-groups']:
             if len(sys.argv) < 3:
                 print("Error: groupname not provided.")
                 print_help()
@@ -733,7 +797,7 @@ def main():
                 return
             groupname = sys.argv[2]
             delete_user_memberships(groupname)
-        elif option in ['-g', '--get-user-info']:
+        elif option in ['-gu', '--get-user-info']:
             if len(sys.argv) < 3:
                 print("Error: username not provided.")
                 print_help()
@@ -741,7 +805,7 @@ def main():
             username = sys.argv[2]
             get_user_info_by_username(username)
 
-        elif option in ['-G', '--get-group-info']:
+        elif option in ['-gg', '--get-group-info']:
             if len(sys.argv) < 3:
                 print("ERROR: groupname not provided.")
                 print_help()
@@ -749,7 +813,7 @@ def main():
             groupname = sys.argv[2]
             get_group_info_by_groupname(groupname)
 
-        elif option in ['-a', '--add-user']:
+        elif option in ['-au', '--add-user']:
             if len(sys.argv) < 3:
                 print("Error: username not provided.")
                 print_help()
@@ -757,7 +821,7 @@ def main():
             username = sys.argv[2]
             add_user(username)
 
-        elif option in ['-A', '--add-group']:
+        elif option in ['-ag', '--add-group']:
             if len(sys.argv) < 3:
                 print("ERROR: groupname not provided.")
                 print_help()
@@ -769,6 +833,7 @@ def main():
 
         else:
             print("Invalid option.")
+            print_help()
             
     else:
         print("Invalid option, please check below")
