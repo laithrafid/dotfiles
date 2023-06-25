@@ -41,6 +41,7 @@ import sys
 import subprocess
 import socket
 import ipaddress
+import readline  # Added readline module for arrow key support
 from prettytable import PrettyTable
 from termcolor import colored
 from scapy.all import *
@@ -434,8 +435,68 @@ def main():
             pass
             choice = input("Enter your choice: ")
             if choice == "1":
-               options = input ("Enter the option(s) to pass to tcpdump like port, host, -i, src, dst or hit enter for All Traffic:").split()
-               tcp2color(options)
+                filter_choices = {
+                "1": "port",
+                "2": "host",
+                "3": "-i",
+                "4": "src",
+                "5": "dst",
+                "6": "proto",  # Protocol
+                }
+                logical_operators = {
+                "1": "and",
+                "2": "or"
+                }
+                print("Select the main tcpdump filters (you can choose multiple options, press 'Enter' to finish):")
+                print("  1. Port")
+                print("  2. Host")
+                print("  3. Interface")
+                print("  4. Source IP")
+                print("  5. Destination IP")
+                print("  6. Protocol")
+                print("  if No filter selected, tcpdump run without any filter(Press Enter)")
+                selected_filters = []
+                while True:
+                    choice = input("Enter the filter choice (1-6) or press 'Enter' to finish: ")
+                    if choice == "":
+                        break
+                    if choice in filter_choices:
+                        selected_filter = filter_choices[choice]
+                        selected_filters.append(selected_filter)
+                    else:
+                        print("Invalid choice.")
+                
+                # If no filters were selected, run tcpdump with no filters    
+                if not selected_filters:
+                    print("Running tcpdump with no filters.")
+                    tcp2color([])
+                else:
+                    logical_operator = ""
+                    if len(selected_filters) > 1:
+                        print("Select the logical operator to combine the filters:")
+                        print("  1. AND")
+                        print("  2. OR")
+                        operator_choice = input("Enter your choice (1-2): ")
+                        if operator_choice in logical_operators:
+                            logical_operator = logical_operators[operator_choice]
+                        else:
+                            print("Invalid choice. Using default logical operator 'AND'.")
+                            logical_operator = "and"
+                    else:
+                        logical_operator = "and"
+
+                    # Construct the pcap filter expression based on the selected filters and logical operator
+                    pcap_filter = ""
+                    for selected_filter in selected_filters:
+                        value = input(f"Enter the value for {selected_filter}: ")
+                        pcap_filter += f"{selected_filter} {value} {logical_operator} "
+
+                # Remove the trailing logical operator from the filter expression
+                pcap_filter = pcap_filter.rstrip(f" {logical_operator} ")
+
+                # Call tcp2color function with the constructed pcap filter expression
+                print("filter syntax applie is:", pcap_filter)
+                tcp2color([pcap_filter])
 
             elif choice == "2":
                 options = input("Enter the option(s) -4 or -6 for target(hostname) if ipv6 traceroute6 will run or if ipv4 traceroute will run: ")
