@@ -42,11 +42,15 @@ import subprocess
 import socket
 import ipaddress
 import readline  # Added readline module for arrow key support
+import threading
+import datetime
+import pcap
+from colorama import init, Fore, Style
 from prettytable import PrettyTable
 from termcolor import colored
 from scapy.all import *
 from scapy.layers.inet import IP
-
+from tabulate import tabulate
 
 #################### Utility Functions:
 
@@ -155,71 +159,188 @@ def classify_ipv6(ipv6_address):
 
 #################### Information Retrieval Functions:
 
-def tcp2color(options):
-    try: 
-    # Define color codes
-        ip_header_color = '\033[0;38;5;18m'
-        tcp_header_color = '\033[0;38;5;52m'
-        tcp_data_color = '\033[0;48;5;10m'
-        ip_address1_color = '\033[1;38;5;51m'
-        port1_color = '\033[1;38;5;46m'
-        ip_address2_color = '\033[1;38;5;208m'
-        port2_color = '\033[1;38;5;226m'
-        filter_ok_color = '\033[1;38;5;46m'
-        filter_end_color = '\033[1;38;5;196m'
+def ping_ipv4(target, options):
+    command = ["ping"] + options + [target]
+    try:
+        ping_output = subprocess.check_output(command, stderr=subprocess.STDOUT, universal_newlines=True)
+        print_colored_output(ping_output)
+    except subprocess.CalledProcessError as e:
+        print(f"Ping failed. Check the IPv4 address or hostname. Error: {e.output}")
 
+def ping_ipv6(target, options):
+    command = ["ping6"] + options + [target]
+    try:
+        ping_output = subprocess.check_output(command, stderr=subprocess.STDOUT, universal_newlines=True)
+        print_colored_output(ping_output)
+    except subprocess.CalledProcessError as e:
+        print(f"Ping failed. Check the IPv6 address or hostname. Error: {e.output}")
+
+def process_line(line):
+    # Define color codes
+    ip_header_color = Fore.BLUE
+    tcp_header_color = Fore.GREEN
+    tcp_data_color = Fore.YELLOW 
+    ip_address1_color = Fore.CYAN
+    port1_color = Fore.MAGENTA
+    ip_address2_color = Fore.YELLOW
+    port2_color = Fore.RED
+    filter_ok_color = Fore.GREEN
+    filter_end_color = Fore.RED
+    
+    # Chunk 1: Collect packet data
+    if re.match(r'\t0x', line):
+        hex_data = re.search(r'^[\t\s]+0x(.*)', line).group(1)
+        hex_data = re.sub(r'\s+', '', hex_data)
+        raw = bytes.fromhex(hex_data)
+        print(f'  (found {len(raw)} bytes)\n{raw}')
+        return
+
+    # Chunk 2.0: IPv4 address format matching
+    if re.match(r'^(\s*)((?:\d{1,3}\.){3}\d{1,3})\.(\d+) > ((?:\d{1,3}\.){3}\d{1,3})\.(\d+):', line):
+        line = re.sub(r'^(\s*)((?:\d{1,3}\.){3}\d{1,3})\.(\d+) > ((?:\d{1,3}\.){3}\d{1,3})\.(\d+):', rf'\1{ip_address1_color}\2{Style.RESET_ALL}:{port1_color}\3{Style.RESET_ALL} > {ip_address2_color}\4{Style.RESET_ALL}:{port2_color}\5{Style.RESET_ALL}:', line)
+        print(line)
+        return
+
+    # Chunk 2.1: IPv6 address format matching
+    elif re.match(r'^(\s*)([\da-fA-F:]+) > ([\da-fA-F:]+):', line):
+        line = re.sub(r'^(\s*)([\da-fA-F:]+) > ([\da-fA-F:]+):', rf'\1{ip_address1_color}\2{Style.RESET_ALL} > {ip_address2_color}\3{Style.RESET_ALL}:', line)
+        print(line)
+        return
+
+    # Chunk 2.2: IPv6 address with port format matching
+    elif re.match(r'^(\s*)([\da-fA-F:]+)\.(\d+) > ([\da-fA-F:]+)\.(\d+):', line):
+        line = re.sub(r'^(\s*)([\da-fA-F:]+)\.(\d+) > ([\da-fA-F:]+)\.(\d+):', rf'\1{ip_address1_color}\2{Style.RESET_ALL}:{port1_color}\3{Style.RESET_ALL} > {ip_address2_color}\4{Style.RESET_ALL}:{port2_color}\5{Style.RESET_ALL}:', line)
+        print(line)
+        return
+
+    # Chunk 2.3: Color formatting for ICMPv6 source and destination IP addresses
+    elif re.search(r'(\d{1,3}(?:::\d{1,3}){0,6}) > (\d{1,3}(?:::\d{1,3}){0,6})', line):
+        source_ip = re.search(r'(\d{1,3}(?:::\d{1,3}){0,6}) > (\d{1,3}(?:::\d{1,3}){0,6})', line).group(1)
+        dest_ip = re.search(r'(\d{1,3}(?:::\d{1,3}){0,6}) > (\d{1,3}(?:::\d{1,3}){0,6})', line).group(2)
+        line = re.sub(r'(\d{1,3}(?:::\d{1,3}){0,6}) > (\d{1,3}(?:::\d{1,3}){0,6})', rf'{ip_address1_color}\1{Style.RESET_ALL} > {ip_address2_color}\2{Style.RESET_ALL}', line)
+        print(line)
+        return
+
+    # Chunk 3: Add red color to timestamp
+    elif re.match(r'^(\d{2}:\d{2}:\d{2}\.\d+) ', line):
+        line = re.sub(r'^(\d{2}:\d{2}:\d{2}\.\d+) ', rf'{filter_end_color}\1{Style.RESET_ALL} ', line)
+        print(line)
+        return
+
+    # Chunk 4: Add color to TCP flags
+    line = re.sub(r'\b(Flags|Ack|Seq|Win)\b', rf'{tcp_header_color}\1{Style.RESET_ALL}', line)
+
+    # Chunk 5: Add color to IP headers
+    line = re.sub(r'\b(IP|ttl)\b', rf'{ip_header_color}\1{Style.RESET_ALL}', line)
+
+    # Chunk 6: Add color to TCP data
+    line = re.sub(r'\b0x[\da-fA-F]+\b', rf'{tcp_data_color}\g<0>{Style.RESET_ALL}', line)
+
+    # Chunk 7: Add color to filter expressions
+    line = re.sub(r'\b(port|src|dst)\b', rf'{filter_ok_color}\1{Style.RESET_ALL}', line)
+
+    # Chunk 8: Add color to Protocol Details
+    line = re.sub(r'\b(Ethernet|IP|TCP|UDP|ICMP|IGMP)\b', r'{tcp_header_color}\1{Style.RESET_ALL}', line)
+
+    # Chunk 9: Add color to Packet Header Information (including ICMP and IGMP)
+    line = re.sub(r'(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})', rf'{ip_address1_color}\1{Style.RESET_ALL}', line)
+    line = re.sub(r' > (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})', rf' > {ip_address2_color}\1{Style.RESET_ALL}', line)
+
+    # Print the modified line
+    print(line)
+
+def process_output(tcpdump_process):
+    for line in iter(tcpdump_process.stdout.readline, ''):
+        line = line.rstrip('\n')
+        process_line(line)
+
+def process_tcpdump_output(options, num_threads):
+    try:
         # Run tcpdump command and capture the output
         tcpdump_args = ['sudo', 'tcpdump', '-Knv'] + options
-        tcpdump_process = subprocess.Popen(tcpdump_args, stdout=subprocess.PIPE)
+        check_write = '-w' in options
+        print_write = Fore.RED + ' '.join(tcpdump_args) + " will run now:" + Style.RESET_ALL
+        print(print_write)
 
-    # Process each line of the tcpdump output
-        for line in tcpdump_process.stdout:
-            line = line.decode('utf-8')
-            # Chunk 1: Collect packet data
-            if re.match(r'\t0x', line):
-                hex_data = re.search(r'^[\t\s]+0x(.*)', line).group(1)
-                hex_data = re.sub(r'\s+', '', hex_data)
-                raw = bytes.fromhex(hex_data)
-                print(f'  (found {len(raw)} bytes)\n{raw}')
-                continue
-            # Chunk 2.0: IPv4 address format matching
-            if re.match(r'^(\s*)((?:\d{1,3}\.){3}\d{1,3})\.(\d+) > ((?:\d{1,3}\.){3}\d{1,3})\.(\d+):', line):
-                line = re.sub(r'^(\s*)((?:\d{1,3}\.){3}\d{1,3})\.(\d+) > ((?:\d{1,3}\.){3}\d{1,3})\.(\d+):', rf'\1{ip_address1_color}\2\033[0m:{port1_color}\3\033[0m > {ip_address2_color}\4\033[0m:{port2_color}\5\033[0m:', line)
+        if check_write:
+            # Generate filenames with timestamps
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            pcap_output_filename = f"tcpdump_output_{timestamp}.pcap"
 
-            # Chunk 2.1: IPv6 address format matching
-            elif re.match(r'^(\s*)([\da-fA-F:]+) > ([\da-fA-F:]+):', line):
-                line = re.sub(r'^(\s*)([\da-fA-F:]+) > ([\da-fA-F:]+):', rf'\1{ip_address1_color}\2\033[0m > {ip_address2_color}\3\033[0m:', line)
+            # Create the pcap file object for saving the output
+            pcap_output_file = pcap.pcapObject()
+            pcap_output_file.open_dead(pcap.DLT_RAW, 65536)  # DLT_RAW for raw packets
+            pcap_output_file.dump_open(pcap_output_filename)
 
-            # Chunk 2.2: IPv6 address with port format matching
-            elif re.match(r'^(\s*)([\da-fA-F:]+)\.(\d+) > ([\da-fA-F:]+)\.(\d+):', line):
-                line = re.sub(r'^(\s*)([\da-fA-F:]+)\.(\d+) > ([\da-fA-F:]+)\.(\d+):', rf'\1{ip_address1_color}\2\033[0m:{port1_color}\3\033[0m > {ip_address2_color}\4\033[0m:{port2_color}\5\033[0m:', line)
+            def save_packet_to_file(raw_packet):
+                pcap_output_file.dump(raw_packet)
 
-            # Chunk 2.3: Color formatting for ICMPv6 source and destination IP addresses
-            if re.search(r'(\d{1,3}(?:::\d{1,3}){0,6}) > (\d{1,3}(?:::\d{1,3}){0,6})', line):
-                source_ip = re.search(r'(\d{1,3}(?:::\d{1,3}){0,6}) > (\d{1,3}(?:::\d{1,3}){0,6})', line).group(1)
-                dest_ip = re.search(r'(\d{1,3}(?:::\d{1,3}){0,6}) > (\d{1,3}(?:::\d{1,3}){0,6})', line).group(2)
-                line = re.sub(r'(\d{1,3}(?:::\d{1,3}){0,6}) > (\d{1,3}(?:::\d{1,3}){0,6})', rf'{ip_address1_color}\1\033[0m > {ip_address2_color}\2\033[0m', line)
+            def save_packet_and_process(tcpdump_process):
+                for line in iter(tcpdump_process.stdout.readline, ''):
+                    line = line.rstrip('\n')
+                    save_packet_to_file(line)
+                    process_line(line)
+                    print(line)
 
-            # Chunk 3: Add red color to timestamp
-            if re.match(r'^(\d{2}:\d{2}:\d{2}\.\d+) ', line):
-                line = re.sub(r'^(\d{2}:\d{2}:\d{2}\.\d+) ', rf'{filter_end_color}\1\033[0m', line)
+            tcpdump_process = subprocess.Popen(tcpdump_args, stdout=subprocess.PIPE, bufsize=1, universal_newlines=True)
+            save_packet_and_process(tcpdump_process)
+        else:
+            tcpdump_process = subprocess.Popen(tcpdump_args, stdout=subprocess.PIPE, bufsize=1, universal_newlines=True)
 
-            # Chunk 4: Add color to TCP flags
-            line = re.sub(r'\b(Flags|Ack|Seq|Win)\b', rf'{tcp_header_color}\1\033[0m', line)
-            # Chunk 5: Add color to IP headers
-            line = re.sub(r'\b(IP|ttl)\b', rf'{ip_header_color}\1\033[0m', line)
-            # Chunk 6: Add color to TCP data
-            line = re.sub(r'\b0x[\da-fA-F]+\b', rf'{tcp_data_color}\g<0>\033[0m', line)
-            # Chunk 7: Add color to filter expressions
-            line = re.sub(r'\b(port|src|dst)\b', rf'{filter_ok_color}\1\033[0m', line)
-            # Chunk 8: Add color to Protocol Details
-            line = re.sub(r'\b(Ethernet|IP|TCP|UDP|ICMP|IGMP)\b', r'\033[1;38;5;46m\1\033[0m', line)
-            # Chunk 9: Add color to Packet Header Information (including ICMP and IGMP)
-            line = re.sub(r'(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})', rf'{ip_address1_color}\1\033[0m', line)
-            line = re.sub(r' > (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})', rf'{ip_address2_color}\1\033[0m', line)
+        # Create a list to hold the worker threads
+        worker_threads = []
 
-            # Print the modified line
-            print(line, end='')
+        # Start the worker threads for processing output
+        for _ in range(num_threads):
+            output_thread = threading.Thread(target=process_output, args=(tcpdump_process,))
+            output_thread.start()
+            worker_threads.append(output_thread)
+
+        # Wait for all worker threads to finish
+        for thread in worker_threads:
+            thread.join()
+
+        # Wait for the tcpdump process to finish
+        tcpdump_process.wait()
+
+        print("tcpcolor has finished processing.")
+
+    except KeyboardInterrupt:
+        print("\ntcpdump interrupted by user.")
+
+    try:
+        # Run tcpdump command and capture the output
+        tcpdump_args = ['sudo', 'tcpdump', '-Knv'] + options
+        check_write = Fore.RED + ' '.join(tcpdump_args) + " will run now:" + Style.RESET_ALL
+        print(check_write)
+        if check_write == "-w"
+            tcpdump_process = subprocess.Popen(tcpdump_args, stdout=subprocess.PIPE, bufsize=1, universal_newlines=True)
+            pcap_output_file = pcap.pcapObject()
+            pcap_output_file.open_dead(pcap.DLT_RAW, 65536)  # DLT_RAW for raw packets
+            pcap_output_file.dump_open(pcap_output_filename)
+            def save_packet_to_file(raw_packet):
+                pcap_output_file.dump(raw_packet)
+
+            def save_packet_and_process(tcpdump_process):
+                for line in iter(tcpdump_process.stdout.readline, ''):
+                    line = line.rstrip('\n')
+                    save_packet_to_file(line)
+                    process_line(line)
+        else:
+            tcpdump_process = subprocess.Popen(tcpdump_args, stdout=subprocess.PIPE, bufsize=1, universal_newlines=True)
+
+        # Create a list to hold the worker threads
+        worker_threads = []
+
+        # Start the worker threads for processing output
+        for _ in range(num_threads):
+            output_thread = threading.Thread(target=process_output, args=(tcpdump_process,))
+            output_thread.start()
+            worker_threads.append(output_thread)
+
+        # Wait for all worker threads to finish
+        for thread in worker_threads:
+            thread.join()
 
         # Wait for the tcpdump process to finish
         tcpdump_process.wait()
@@ -339,6 +460,7 @@ def parse_output_ipv6(output):
             table.add_row([Hop, AS, Hostname, IP_Address, Class, Organization, Netname, Country, RTT])
     return table
 
+
 #################### Commnads and Subprocess to Run:
 
 def run_traceroute(target, options):
@@ -413,6 +535,37 @@ def create_colored_table():
     table.format = True
     return table
 
+def print_colored_output(output):
+    # Define colors
+    GREEN = '\033[92m'
+    RED = '\033[91m'
+    RESET = '\033[0m'
+    
+    lines = output.strip().split('\n')
+    for line in lines:
+        if "icmp_seq" in line or "64 bytes" in line:
+            print(GREEN + line + RESET)
+        elif "Destination Host Unreachable" in line or "Request timeout" in line:
+            print(RED + line + RESET)
+        else:
+            print(line)
+
+def print_help_ping4():
+    p4_options_prompt = subprocess.run(["ping", "-h"], text=True).stdout
+    print(p4_options_prompt)
+
+def print_help_ping6():
+    p6_options_prompt = subprocess.run(["ping6", "-h"], text=True).stdout
+    print(p6_options_prompt)
+
+def print_help_trace():
+    tr_options_prompt = subprocess.run(["traceroute", "-h"], capture_output=True, text=True).stdout.strip().splitlines()
+    print(tr_options_prompt)
+
+def print_help_trace6():
+    tr6_options_prompt = subprocess.run(["traceroute6", "-h"], capture_output=True, text=True).stdout.strip().splitlines()
+    print(tr6_options_prompt)
+
 #################### Main Function:
 
 def main():
@@ -426,15 +579,50 @@ def main():
             print("Network and Security Management")
             print("===========================")
             print("Select an option:")
-            print("  1. Run tcpdump with color")
-            print("  2. Traceroute with whois")
-            print("  3. Portscan using scapy")
-            print("  4. Traceroute using scapy")
-            print("  5. Help")
+            print("  1. Ping")
+            print("  2. Run tcpdump with color")
+            print("  3. Traceroute with whois")
+            print("  4. Portscan using scapy")
+            print("  5. Traceroute using scapy")
+            print("  6. Help")
             print("  0. Quit")
             pass
             choice = input("Enter your choice: ")
             if choice == "1":
+                target = input("Enter the IP address or hostname to ping: ")
+                target = target.strip(" ")
+                options = input("Enter the option(s) -4 or -6 for target(hostname), Press Enter for Autorun(target/hostname>ipv4) or if target(IPv4/IPv6) ping : ")
+                
+                if options == "-4":
+                    print_help_ping4()
+                    p_options = input("Enter Ping options(Press Enter to skip):")
+                elif options == "-6":
+                    print_help_ping6()
+                    p6_options = input("Enter Ping options(Press Enter to skip):")
+                else:
+                    p_options = input("Enter Ping options(Press Enter to skip):")
+
+                if validate_hostname(target):
+                    if not options or '-4' in options:
+                        ping_ipv4(target, p_options.split())
+                    elif '-6' in options:
+                        ping_ipv6(target, p6_options.split())
+                    else:
+                        print("Invalid options provided. ")
+                elif validate_ipv4(target):
+                    if not options or '-4' in options:
+                        ping_ipv4(target, p_options.split())
+                    else:
+                        print("Invalid options provided for IPv4 target.")
+                elif validate_ipv6(target):
+                    if not options or '-6' in options:
+                        ping_ipv6(target, p6_options.split())
+                    else:
+                        print("Invalid options provided for IPv6 target.")
+                else:
+                    print("Invalid target provided, please Run Again. ")
+
+            elif choice == "2":
                 filter_choices = {
                 "1": "port",
                 "2": "host",
@@ -468,8 +656,15 @@ def main():
                 
                 # If no filters were selected, run tcpdump with no filters    
                 if not selected_filters:
+                    num_threads = 1                    
                     print("Running tcpdump with no filters.")
-                    tcp2color([])
+                    save_output = input("Do you want to save the output? (yes/no): ")
+                    if save_output.lower() == "yes":
+                        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                        pcap_output_filename = f"tcpdump_output_{timestamp}.pcap"
+                        process_tcpdump_output(["-w","pcap_output_filename"], num_threads)
+                    else:
+                        process_tcpdump_output([], num_threads)
                 else:
                     logical_operator = ""
                     if len(selected_filters) > 1:
@@ -493,17 +688,32 @@ def main():
 
                 # Remove the trailing logical operator from the filter expression
                 pcap_filter = pcap_filter.rstrip(f" {logical_operator} ")
+                save_output = input("Do you want to save the output? (yes/no): ")
 
-                # Call tcp2color function with the constructed pcap filter expression
-                print("filter syntax applie is:", pcap_filter)
-                tcp2color([pcap_filter])
+                # Call tcpdump function with the constructed pcap filter expression
+                num_threads = 1
+                save_output = input("Do you want to save the output? (yes/no): ")
+                if save_output.lower() == "yes":
+                    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                    pcap_output_filename = f"tcpdump_output_{timestamp}.pcap"
+                    process_tcpdump_output([pcap_filter, "-w", pcap_output_filename], num_threads)
+                else:
+                process_tcpdump_output([pcap_filter], num_threads)
 
-            elif choice == "2":
-                options = input("Enter the option(s) -4 or -6 for target(hostname) if ipv6 traceroute6 will run or if ipv4 traceroute will run: ")
-                tr_options = input("Enter traceroute option(s):")
+            elif choice == "3":
                 target = input("Enter the target to run traceroute and whois on: ")
                 target = target.strip(" ")
-                
+                options = input("Enter the option(s) -4 or -6 for target(hostname), Press Enter for Autorun(target/hostname>ipv4) or if target(IPv4/IPv6) traceroute : ")
+
+                if options == "-4":
+                    print_help_trace()
+                    tr_options = input("Enter Traceroute options(Press Enter to skip):")
+                elif options == "-6":
+                    print_help_trace6()
+                    tr_options = input("Enter Traceroute options(Press Enter to skip):")
+                else:
+                    tr_options = input("Enter Traceroute options(Press Enter to skip):")
+
                 if validate_hostname(target):
                     if not options or '-4' in options:
                         output = run_traceroute(target, tr_options.split() + ['-a', '-e'])
@@ -530,9 +740,9 @@ def main():
                     else:
                         print("Invalid options provided for IPv6 target.")
                 else:
-                    print("Invalid target provided. ")
+                    print("Invalid target provided, please Run Again. ")
 
-            elif choice == "3":
+            elif choice == "4":
                 target = input("Enter the ip/hostname(s) to scan (if more than one, separated by spaces): ").split()
                 if target == '': 
                     print("please enter target ip/hostname to scan")
@@ -552,11 +762,11 @@ def main():
                             print(port)
                             print(dns)
 
-            elif choice == "4":
+            elif choice == "5":
                 target = input("Enter the target ip/hostname to traceroute using scapy: ")
                 scapy_traceroute(target)
             
-            elif choice == "5":
+            elif choice == "6":
                 print_help()
            
             elif choice == "0":
@@ -690,6 +900,23 @@ def main():
                 print("please enter only one valid ip/hostname to scan")
                 print_help()
             pass
+        elif option in ['-p', '--ping']:
+            '''
+            if len(sys.argv) < 3:
+                print("Enter the target to ping")
+                print_help()
+                return
+            if len(sys.argv) == 3:
+                target = sys.argv[-1]
+                if validate_hostname(target) or validate_ipv4(target) or validate_ipv6(target):
+                else:
+                    print("please enter valid ip/hostname to scan")
+                    print_help()
+            if len(sys.argv) > 3:
+                print("please enter only one valid ip/hostname to scan")
+                print_help()
+            pass
+            '''
         elif option in ['-h', '--help']:
             print_help()
         
