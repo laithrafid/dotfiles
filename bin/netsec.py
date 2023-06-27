@@ -634,7 +634,7 @@ def main():
                             print("Invalid choice. Using default logical operator 'AND'.")
                             logical_operator = "and"
                     elif len(selected_filters) == 1:
-                        operator_choice = input("for logical operator NOT please Enter 3")
+                        operator_choice = input("for logical operator NOT please Enter 3 (or Enter to skip) :")
                         if operator_choice in logical_operators:
                             logical_operator = logical_operators[operator_choice] 
                     else:
