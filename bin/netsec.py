@@ -252,56 +252,68 @@ def get_tcpdump_version():
     tcpdump_version = subprocess.check_output(['sudo', 'tcpdump', '--version'], universal_newlines=True)
     return tcpdump_version.strip()
 
+def read_tcpdump_output(options, num_threads):
+    current_directory = os.getcwd()
+    pcap_input_filename = input("give me filename.pcap:")
+    pcap_input_path = input("Enter Directory of filename.pcap (Press enter If file in {current_directory}):  ")
+    pcap_file_path = (pcap_input_path + pcap_input_filename).strip(" ")
+    read_args = ['sudo', 'tcpdump', '-Knv'] + options + ['-r', pcap_file_path]
+    print(Fore.RED + ' '.join(read_args) + " will run now:" + Style.RESET_ALL)
+    # Run tcpdump command and capture the output
+    tcpdump_process = subprocess.Popen(read_args, stdout=subprocess.PIPE, bufsize=1, universal_newlines=True)
+            
+    # Create a list to hold the worker threads
+    worker_threads = []
+
+        # Start the worker threads for processing output
+    for _ in range(num_threads):
+        output_thread = threading.Thread(target=process_output, args=(tcpdump_process,))
+        output_thread.start()
+        worker_threads.append(output_thread)
+
+    # Wait for all worker threads to finish
+    for thread in worker_threads:
+        thread.join()
+
+    # Wait for the tcpdump process to finish
+    tcpdump_process.wait()
+
+    print("finished processing.")
+
 def process_tcpdump_output(options, num_threads):
-    save_output = input("Do you want to save the output? (yes/no): ")
-    print("Using tcpdump version:", get_tcpdump_version())
+    save_output = input("Do you want to save the output? (yes) or (Press enter to continoue without saving): ")
+    print(fore.RED + "Using tcpdump version:" + get_tcpdump_version() + Style.RESET_ALL)
     if save_output.lower() == "yes":
         # Run tcpdump and save output to pcap file
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         pcap_output_filename = f"tcpdump_output_{timestamp}.pcap"
-        tcpdump_args = ['sudo', 'tcpdump', '-n', '-k INPD', '-tttt'] + options + ['-w', pcap_output_filename]
-        print(Fore.RED + ' '.join(tcpdump_args) + " will run now:" + Style.RESET_ALL)
-        
-        try:
-            # Run tcpdump command
-            subprocess.run(tcpdump_args, check=True)
-            
-            # Create subprocess to read and process the captured lines from the pcap file
-            read_args = ['sudo', 'tcpdump', '-Knv', '-k INPD', '-tttt'] + options + ['-r', pcap_output_filename]
-            tcpdump_output = subprocess.check_output(read_args, universal_newlines=True)
-            
-            # Process the output of tcpdump
-            process_output(tcpdump_output)
-        
-        except subprocess.CalledProcessError as e:
-            print("Error running tcpdump. Please check the command and try again.")
-            print("Error message:", e.output)
-        
-    else:
-        # Run tcpdump without saving output
-        tcpdump_args = ['sudo', 'tcpdump', '-Knv' ,'-tttt'] + options
-        print(Fore.RED + ' '.join(tcpdump_args) + " will run now:" + Style.RESET_ALL)
-        # Run tcpdump command and capture the output
-        tcpdump_process = subprocess.Popen(tcpdump_args, stdout=subprocess.PIPE, bufsize=1, universal_newlines=True)
+        save_args = ['sudo', 'tcpdump'] + options + ['-w', pcap_output_filename]
+        print(Fore.RED + ' '.join(save_args) + " will run now:" + Style.RESET_ALL)
+        tcpdump_process = subprocess.Popen(save_args,  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    # Run tcpdump without saving output
+    tcpdump_args = ['sudo', 'tcpdump', '-Knv' ,'-tttt'] + options
+    print(Fore.RED + ' '.join(tcpdump_args) + " will run now:" + Style.RESET_ALL)
+    # Run tcpdump command and capture the output
+    tcpdump_process = subprocess.Popen(tcpdump_args, stdout=subprocess.PIPE, bufsize=1, universal_newlines=True)
             
         # Create a list to hold the worker threads
-        worker_threads = []
+    worker_threads = []
 
         # Start the worker threads for processing output
-        for _ in range(num_threads):
-            output_thread = threading.Thread(target=process_output, args=(tcpdump_process,))
-            output_thread.start()
-            worker_threads.append(output_thread)
+    for _ in range(num_threads):
+        output_thread = threading.Thread(target=process_output, args=(tcpdump_process,))
+        output_thread.start()
+        worker_threads.append(output_thread)
 
-        # Wait for all worker threads to finish
-        for thread in worker_threads:
-            thread.join()
+    # Wait for all worker threads to finish
+    for thread in worker_threads:
+        thread.join()
 
-        # Wait for the tcpdump process to finish
-        tcpdump_process.wait()
+    # Wait for the tcpdump process to finish
+    tcpdump_process.wait()
 
-        print("finished processing.")
-
+    print("finished processing.")
 
 def process_output(tcpdump_process):
     for line in iter(tcpdump_process.stdout.readline, ''):
@@ -595,7 +607,7 @@ def main():
                 "2": "or",
                 "3": "not"
                 }
-                print("Select the main tcpdump filters (you can choose multiple options, press 'Enter' to finish):")
+                print("Select the main tcpdump filters (you can choose multiple options, press 'Enter' to skip):")
                 print("  1. Port")
                 print("  2. Host")
                 print("  3. Interface")
@@ -606,7 +618,7 @@ def main():
                 print("  if No filter selected, tcpdump run without any filter(Press Enter)")
                 selected_filters = []
                 while True:
-                    choice = input("Enter the filter choice (1-6) or press 'Enter' to finish: ")
+                    choice = input("Enter the filter choice (1-6) or press 'Enter' to skip: ")
                     if choice == "":
                         break
                     if choice in filter_choices:
@@ -614,12 +626,17 @@ def main():
                         selected_filters.append(selected_filter)
                     else:
                         print("Invalid choice.")
-                
                 # If no filters were selected, run tcpdump with no filters    
                 if not selected_filters:
                     print("Running tcpdump with no filters.")
                     num_threads = 1
-                    process_tcpdump_output([],num_threads)
+                    color_output = input("Read a file with colors or live? (yes for Read)(no for live) :")
+                    if color_output == "yes":
+                        read_tcpdump_output([], num_threads) 
+                    elif color_output == "no":
+                        process_tcpdump_output([],num_threads)
+                    else:
+                        break
                 else:
                     logical_operator = ""
                     if len(selected_filters) > 1:
@@ -649,7 +666,13 @@ def main():
                     pcap_filter = pcap_filter.rstrip(f" {logical_operator} ")
                     num_threads = 1
                     # Call tcpdump function with the constructed pcap filter expression
-                    process_tcpdump_output([pcap_filter], num_threads)
+                    color_output = input("Read a file with colors or live? (yes for Read)(no for live) :")
+                    if color_output == "yes":
+                        read_tcpdump_output([pcap_filter], num_threads)
+                    elif color_output == "no":
+                        process_tcpdump_output([pcap_filter], num_threads)
+                    else:
+                        break
 
             elif choice == "3":
                 target = input("Enter the target to run traceroute and whois on: ")
