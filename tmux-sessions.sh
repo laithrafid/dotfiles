@@ -29,26 +29,26 @@ if [ "$SESSIONNOEXISTS" = "" ]; then
 
     # Create a new window named "dev" and change to the directory specified by the $WDIR variable
     tmux new-window -t "$SESSION":3 -n 'dev'
-    tmux send-keys -t 'dev' 'sudo su laithrafid && cd $WDIR' C-m
+    tmux send-keys -t 'dev' 'cd $WDIR' C-m
     tmux splitw -h
-    tmux send-keys -t 'dev' 'sudo su laithrafid && cd $WDIR' C-m
+    tmux send-keys -t 'dev' 'cd $WDIR' C-m
     tmux splitw -v
-    tmux send-keys -t 'dev' 'sudo su laithrafid && cd $WDIR' C-m
+    tmux send-keys -t 'dev' 'cd $WDIR' C-m
     tmux select-pane -t 1
     tmux splitw -v
-    tmux send-keys -t 'dev' 'sudo su laithrafid && cd $WDIR' C-m
+    tmux send-keys -t 'dev' 'cd $WDIR' C-m
     tmux select-pane -t 1
 
     # Create a new window named "ssh" for SSH connections
     tmux new-window -t "$SESSION":4 -n 'ssh'
-    tmux send-keys -t 'ssh' 'sudo su laithrafid && cd $WDIR' C-m
+    tmux send-keys -t 'ssh' 'cd $WDIR' C-m
     tmux splitw -h
-    tmux send-keys -t 'ssh' 'sudo su laithrafid && cd $WDIR' C-m
+    tmux send-keys -t 'ssh' 'cd $WDIR' C-m
     tmux splitw -v
-    tmux send-keys -t 'ssh' 'sudo su laithrafid && cd $WDIR' C-m
+    tmux send-keys -t 'ssh' 'cd $WDIR'C-m
     tmux select-pane -t 1
     tmux splitw -v
-    tmux send-keys -t 'ssh' 'sudo su laithrafid && cd $WDIR' C-m
+    tmux send-keys -t 'ssh' 'cd $WDIR' C-m
     tmux select-pane -t 1
 
     # Attach to the first window of the session
@@ -84,26 +84,26 @@ rotated(){
 
     # Create a new window named "dev" and change to the directory specified by the $WDIR variable
     tmux new-window -t "$SESSION":3 -n 'dev'
-    tmux send-keys -t 'dev' 'sudo su laithrafid && cd $WDIR' C-m
+    tmux send-keys -t 'dev' 'cd $WDIR' C-m
     tmux splitw -v
-    tmux send-keys -t 'dev' 'sudo su laithrafid && cd $WDIR' C-m
+    tmux send-keys -t 'dev' 'cd $WDIR' C-m
     tmux splitw -v
-    tmux send-keys -t 'dev' 'sudo su laithrafid && cd $WDIR' C-m
+    tmux send-keys -t 'dev' 'cd $WDIR' C-m
     tmux select-pane -t 1
     tmux splitw -v
-    tmux send-keys -t 'dev' 'sudo su laithrafid && cd $WDIR' C-m
+    tmux send-keys -t 'dev' 'cd $WDIR' C-m
     tmux select-pane -t 1
 
     # Create a new window named "ssh" for SSH connections
     tmux new-window -t "$SESSION":4 -n 'ssh'
-    tmux send-keys -t 'ssh' 'sudo su laithrafid && cd $WDIR' C-m
+    tmux send-keys -t 'ssh' 'cd $WDIR' C-m
     tmux splitw -v
-    tmux send-keys -t 'ssh' 'sudo su laithrafid && cd $WDIR' C-m
+    tmux send-keys -t 'ssh' 'cd $WDIR' C-m
     tmux splitw -v
-    tmux send-keys -t 'ssh' 'sudo su laithrafid && cd $WDIR' C-m
+    tmux send-keys -t 'ssh' 'cd $WDIR' C-m
     tmux select-pane -t 1
     tmux splitw -v
-    tmux send-keys -t 'ssh' 'sudo su laithrafid && cd $WDIR' C-m
+    tmux send-keys -t 'ssh' 'cd $WDIR' C-m
     tmux select-pane -t 1
 
     # Attach to the first window of the session
