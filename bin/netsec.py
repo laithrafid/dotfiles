@@ -4,7 +4,6 @@ pyhton3 script to do these functions :
 
 Utility Functions:
 
-print_help()
 validate_hostname()
 validate_ipv4()
 validate_ipv6()
@@ -13,7 +12,7 @@ extract_local_options()
 classify_ipv4()
 classify_ipv6()
 
-Information Retrieval and Parsing Functions:
+Information Retrieval and processing Functions:
 
 tcp2color()
 get_whois_info()
@@ -40,6 +39,7 @@ import re
 import sys
 import subprocess
 import socket
+import nmap
 import ipaddress
 import readline  # Added readline module for arrow key support
 import threading
@@ -47,37 +47,10 @@ import datetime
 from colorama import init, Fore, Style
 from prettytable import PrettyTable
 from termcolor import colored
-from scapy.all import *
-from scapy.layers.inet import IP
+import scapy.all as scapy
 from tabulate import tabulate
 
 #################### Utility Functions:
-
-def print_help():
-    print("This script is built to run on Windows, Linux, or macOS.")
-    print("Usage: python netsec.py [option] [arguments] \n")
-    print("Options:\n")
-    print("  -i, --interactive      Run the script in interactive mode")
-    print("  -tc, --tcpdump-color    Run tcpdump with colorized output")
-    print("  -tw, --traceroute_whois Run traceroute(6) and whois on hostname/ip hops")
-    print("  -tc, --tcpdump-color    Run tcpdump with colorized output")
-    print("  -tc, --tcpdump-color    Run tcpdump with colorized output")
-    print("  Example: netsec.py -tc src_ip=X.X.X.X")
-    print("  -tw, --traceroute_whois Run traceroute(6) and whois on hostname/ip hops")
-    print("  Usage: python netsec.py -tw <local options> <traceroute options> <hostname/IP>")
-    print("  Example:  netsec.py -tw -4 google.com")
-    print("            netsec.py -tw  8.8.8.8")
-    print("            netsec.py -tw 2001:4860:4860::8888  (IPv6)")
-    print("            netsec.py -tw -d -P TCP -p 443 google.com")
-    print("             <local options> ")
-    print("             -4 for IPv4 trace on <hostname>")
-    print("             -6 for IPv6 trace on <hostname>")
-    print("             <traceroute options> ")
-    print("             [-adDeFInrSvx] [-A as_server] [-f first_ttl] [-g gateway] [-i iface]")
-    print("             [-M first_ttl] [-m max_ttl] [-p port] [-P proto] [-q nqueries] [-s src_addr]")
-    print("             [-t tos] [-w waittime] [-z pausemsecs] host [packetlen]")
-    print("                                                                  ")
-    print("  -h, --help             Show help")
 
 def validate_hostname(hostname):
     try:
@@ -156,7 +129,7 @@ def classify_ipv6(ipv6_address):
     else:
         return 'Global'
 
-#################### Information Retrieval Functions:
+#################### Information Retrieval and processing Functions:
 
 def ping_ipv4(target, options):
     command = ["ping"] + options + [target]
@@ -282,7 +255,7 @@ def read_tcpdump_output(options, num_threads):
 
 def process_tcpdump_output(options, num_threads):
     save_output = input("Do you want to save the output? (yes) or (Press enter to continoue without saving): ")
-    print(fore.RED + "Using tcpdump version:" + get_tcpdump_version() + Style.RESET_ALL)
+    print(Fore.RED + "Using tcpdump version:" + get_tcpdump_version() + Style.RESET_ALL)
     if save_output.lower() == "yes":
         # Run tcpdump and save output to pcap file
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -430,6 +403,24 @@ def parse_output_ipv6(output):
             table.add_row([Hop, AS, Hostname, IP_Address, Class, Organization, Netname, Country, RTT])
     return table
 
+def create_colored_table():
+    # Create table with colored columns
+    table = PrettyTable()
+    table.field_names = [
+        colored('Hop', 'green'),
+        colored('AS', 'cyan'),
+        colored('Hostname', 'magenta'),
+        colored('IP Address', 'blue'),
+        colored('Class', 'yellow'),
+        colored('Organization', 'red'),
+        colored('Netname', 'yellow'),
+        colored('Country', 'green'),
+        colored('RTT', 'blue')
+    ]
+    table.align = 'c'
+    # Set color for each value in the table
+    table.format = True
+    return table
 
 #################### Commnads and Subprocess to Run:
 
@@ -459,66 +450,47 @@ def check_open_ports(target, ports):
     open_ports = []
     progress = 0
     for port in ports:
-        packet = scapy.TCP(dst=target, dport=port)
-        response = scapy.sr1(packet)
-        if response and response.getlayer(scapy.TCP).flags == 'SA':
+        packet = scapy.IP(dst=target)/scapy.TCP(dport=port, flags='S')
+        response = scapy.sr1(packet, timeout=2, verbose=0)
+        if response and response.haslayer(scapy.TCP) and response.getlayer(scapy.TCP).flags == 'SA':
             open_ports.append(port)
-            progress += 1
-            print(f"{progress}/{len(ports)} ports scanned...", end="\r")
+        progress += 1
+        print(f"{progress}/{len(ports)} ports scanned...", end="\r")
     return open_ports
 
-def dns_scan(target):
-    ans,unans = sr(IP(dst=target)/UDP(dport=53)/DNS(rd=1,qd=DNSQR(qname="google.com")),timeout=2,verbose=0)
-    if ans:
-        print("DNS Server at %s"%target)
+def check_open_ports_nmap(target, ports=None):
+    if ports is None:
+        # Default ports to scan if no specific ports are provided
+        ports = [21, 22, 25, 80, 53, 443, 445, 8080, 8443]
 
-def scapy_traceroute(target):
-    hops = []
-    progress = 0
-    for ttl in range(1, 30):
-        packet = scapy.IP(dst=target, ttl=ttl)
-        response = scapy.sr1(packet)
-    if response:
-        hops.append(response.getlayer(scapy.IP).src)
-        progress += 1
-        print(f"{progress}/{len(hops)} hops completed...", end="\r")
-        return hops
+    nm = nmap.PortScanner()
+
+    if ports:
+        nm.scan(target, ','.join(map(str, ports)))
+    else:
+        nm.scan(target)
+
+    open_ports = []
+    for host in nm.all_hosts():
+        for port in nm[host]['tcp']:
+            if nm[host]['tcp'][port]['state'] == 'open':
+                open_ports.append(port)
+
+    return open_ports
 
 #################### Display Functions:
 
-def create_colored_table():
-    # Create table with colored columns
-    table = PrettyTable()
-    table.field_names = [
-        colored('Hop', 'green'),
-        colored('AS', 'cyan'),
-        colored('Hostname', 'magenta'),
-        colored('IP Address', 'blue'),
-        colored('Class', 'yellow'),
-        colored('Organization', 'red'),
-        colored('Netname', 'yellow'),
-        colored('Country', 'green'),
-        colored('RTT', 'blue')
-    ]
-    table.align = 'c'
-    # Set color for each value in the table
-    table.format = True
-    return table
-
-def print_colored_output(output):
-    # Define colors
-    GREEN = '\033[92m'
-    RED = '\033[91m'
-    RESET = '\033[0m'
-    
-    lines = output.strip().split('\n')
-    for line in lines:
-        if "icmp_seq" in line or "64 bytes" in line:
-            print(GREEN + line + RESET)
-        elif "Destination Host Unreachable" in line or "Request timeout" in line:
-            print(RED + line + RESET)
-        else:
-            print(line)
+def print_help():
+    print("This script is built to run on Windows, Linux, or macOS.")
+    print("Usage: python netsec.py [option] [arguments] \n")
+    print("Options:\n")
+    print("  -i, --interactive        Run the script in interactive mode")
+    print("  -tc, --tcpdump-color     Run tcpdump with colorized output")
+    print("  -tw, --traceroute_whois  Run traceroute(4|6) and whois on hostname/ip hops")
+    print("  -ps, --portscan_scapy    Run ports scan using scapy with colorized output")
+    print("  -pn, --portscan_nmap     Run ports scan using Nmap with colorized output")
+    pritn("  -p , --ping              Run ping(4|6) with colorized output")
+    print("  -h , --help              Show help")
 
 def print_help_ping4():
     p4_options_prompt = subprocess.run(["ping", "-h"], text=True).stdout
@@ -536,6 +508,79 @@ def print_help_trace6():
     tr6_options_prompt = subprocess.run(["traceroute6", "-h"], capture_output=True, text=True).stdout.strip().splitlines()
     print(tr6_options_prompt)
 
+def print_help_tc():
+    print("Usage: python netsec.py -tc, --tcpdump-color [arguments] \n")
+    print("arguments:\n")
+    print("1. no arguments this will run traceroute")
+    print("2. -r read tcpdump from file")
+    print("3. tcpdump options:")
+    tc_options_prompt = subprocess.run(["tcpdump", "-h"], capture_output=True, text=True).stdout.strip().splitlines()
+    print(tr6_options_prompt)
+
+def primt_help_tw():
+    print("Usage: python netsec.py -tc, --tcpdump-color [local_options] [tr_options] [target] \n")
+    print("target:\n")
+    print("hostname or ip (v4|6)")
+    print("local_options:\n")
+    print(" -4 or -6 for target[hostname]")
+    print("tr_options:\n")
+    print_help_trace()
+    print_help_trace6()
+
+def primt_help_ps():
+    print("Usage: python netsec.py -ps, --portscan_scapy [ports] [target] \n")
+    print("target:\n")
+    print("hostname or ip (v4|6)")
+    print("ports:\n")
+    print("port[s] separated by spaces")
+    print("if no port[s] entered, these ports will be scanned [21,22,25,80,53,443,445,8080,8443]")
+
+def primt_help_pn():
+    print("Usage: python netsec.py -pn, --portscan_nmap [ports] [target] \n")
+    print("target:\n")
+    print("hostname or ip (v4|6)")
+    print("ports:\n")
+    print("port[s] separated by spaces")
+    print("if no port[s] entered, these ports will be scanned [21,22,25,80,53,443,445,8080,8443]")
+
+def primt_help_p():
+    print("Usage: python netsec.py -p, --ping [options] [local_options] [target] \n")
+    print("target:\n")
+    print("hostname or ip (v4|6)")
+    print("local_options:\n")
+    print("-4/-6 for target[hostname]")
+    print("options:\n")
+    print_help_ping4()
+    print_help_trace6()
+   
+
+def print_colored_output(output):
+    # Define colors
+    GREEN = '\033[92m'
+    RED = '\033[91m'
+    RESET = '\033[0m'
+    
+    lines = output.strip().split('\n')
+    for line in lines:
+        if "icmp_seq" in line or "64 bytes" in line:
+            print(GREEN + line + RESET)
+        elif "Destination Host Unreachable" in line or "Request timeout" in line:
+            print(RED + line + RESET)
+        else:
+            print(line)
+
+def print_colored_table_ports(open_ports):
+    headers = ["Port"]
+    data = [[port] for port in open_ports]
+    colored_data = []
+
+    for row in data:
+        colored_row = [f"{Fore.GREEN}{cell}{Style.RESET_ALL}" for cell in row]
+        colored_data.append(colored_row)
+
+    table = tabulate(colored_data, headers=headers, tablefmt="fancy_grid")
+    print(table)
+
 #################### Main Function:
 
 def main():
@@ -543,21 +588,22 @@ def main():
         print("No option provided.")
         print_help()
         return
+
     if len(sys.argv) > 1 and (sys.argv[1] == "-i" or sys.argv[1] == "--interactive"):
      	while True:
             print("\n===========================")
             print("Network and Security Management")
             print("===========================")
             print("Select an option:")
-            print("  1. Ping")
-            print("  2. Run tcpdump with color")
-            print("  3. Traceroute with whois")
-            print("  4. Portscan using scapy")
-            print("  5. Traceroute using scapy")
-            print("  6. Help")
-            print("  0. Quit")
+            print(Fore.CYAN + "  1. Ping" + Style.RESET_ALL)
+            print(Fore.CYAN + "  2. Run tcpdump with color" + Style.RESET_ALL)
+            print(Fore.CYAN + "  3. Traceroute with whois" + Style.RESET_ALL)
+            print(Fore.CYAN + "  4. Portscan using scapy" + Style.RESET_ALL)
+            print(Fore.CYAN + "  5. Portscan using Nmap" + Style.RESET_ALL)
+            print(Fore.YELLOW + "  6. Help" + Style.RESET_ALL)
+            print(Fore.RED +"  0. Quit" + Style.RESET_ALL)
             pass
-            choice = input("Enter your choice: ")
+            choice = input(Fore.GREEN + "Enter your choice: " +  Style.RESET_ALL)
             if choice == "1":
                 target = input("Enter the IP address or hostname to ping: ")
                 target = target.strip(" ")
@@ -608,14 +654,14 @@ def main():
                 "3": "not"
                 }
                 print("Select the main tcpdump filters (you can choose multiple options, press 'Enter' to skip):")
-                print("  1. Port")
-                print("  2. Host")
-                print("  3. Interface")
-                print("  4. Source IP")
-                print("  5. Destination IP")
-                print("  6. Protocol")
-                print("  7. PID")
-                print("  if No filter selected, tcpdump run without any filter(Press Enter)")
+                print(Fore.CYAN + "  1. Port" + Style.RESET_ALL)
+                print(Fore.CYAN + "  2. Host" + Style.RESET_ALL)
+                print(Fore.CYAN + "  3. Interface" + Style.RESET_ALL)
+                print(Fore.CYAN + "  4. Source IP" + Style.RESET_ALL)
+                print(Fore.CYAN + "  5. Destination IP" + Style.RESET_ALL)
+                print(Fore.CYAN + "  6. Protocol" + Style.RESET_ALL)
+                print(Fore.CYAN + "  7. PID" + Style.RESET_ALL)
+                print(Fore.RED + "if No filter selected, tcpdump run without any filter(Press Enter)" + Style.RESET_ALL)
                 selected_filters = []
                 while True:
                     choice = input("Enter the filter choice (1-6) or press 'Enter' to skip: ")
@@ -675,9 +721,9 @@ def main():
                         break
 
             elif choice == "3":
-                target = input("Enter the target to run traceroute and whois on: ")
+                target = input(Fore.CYAN +"Enter the target to run traceroute and whois on :"+  Style.RESET_ALL)
                 target = target.strip(" ")
-                options = input("Enter the option(s) -4 or -6 for target(hostname), Press Enter for Autorun(target/hostname>ipv4) or if target(IPv4/IPv6) traceroute : ")
+                options = input(Fore.YELLOW + "Enter the option(s) -4 or -6 for target(hostname), Press Enter for Autorun(target/hostname>ipv4) or if target(IPv4/IPv6) traceroute :"+  Style.RESET_ALL)
 
                 if options == "-4":
                     print_help_trace()
@@ -705,7 +751,7 @@ def main():
                         table = parse_output_ipv4(output)
                         print(table)
                     else:
-                        print("Invalid options provided for IPv4 target.")
+                        print(Fore.RED + "Invalid options provided for IPv4 target."+  Style.RESET_ALL)
                 elif validate_ipv6(target):
                     if not options or '-6' in options:
                         output = run_traceroute6(target, tr_options.split() + ['-l'])
@@ -718,31 +764,29 @@ def main():
 
             elif choice == "4":
                 target = input("Enter the ip/hostname(s) to scan (if more than one, separated by spaces): ").split()
-                if target == '': 
-                    print("please enter target ip/hostname to scan")
+                if not target:
+                    print("Please enter target IP/hostname to scan")
                 else:
                     ports = input("Enter the port(s) to scan (separated by spaces): ").split()
-                    if ports == '':
-                        ports = [21,22,25,80,53,443,445,8080,8443]
-                        open_ports = check_open_ports(target,ports)
-                        dns = dns_scan(target)
-                        for port in open_ports:
-                            print(port)
-                            print(dns)
-                    else: 
-                        open_ports = check_open_ports(target,ports)
-                        dns = dns_scan(target)
-                        for port in open_ports:
-                            print(port)
-                            print(dns)
+                    if not ports:
+                        ports = [21, 22, 25, 80, 53, 443, 445, 8080, 8443]
+                open_ports = check_open_ports(target, ports)
+                for port in open_ports:
+                    print("Open port:", port)
+                if ports:
+                    ports = list(map(int, ports))
 
             elif choice == "5":
-                target = input("Enter the target ip/hostname to traceroute using scapy: ")
-                scapy_traceroute(target)
+                target = input("Enter the target IP/hostname: ")
+                ports_input = input("Enter the port(s) to scan (separated by spaces): ")
+                ports = list(map(int, ports_input.split())) if ports_input else None
+                open_ports = check_open_ports_nmap(target, ports)
+                print("Open ports:")
+                print_colored_table_ports(open_ports)
             
             elif choice == "6":
                 print_help()
-           
+            
             elif choice == "0":
                 print("Goodbye!")
                 break
@@ -754,13 +798,22 @@ def main():
     elif len(sys.argv) >= 2:
         option = sys.argv[1]
         if option in ['-tc', '--tcpdump-color']:
-            tc_arguments = sys.argv[2:]
-            tcp2color(tc_arguments)
+            pcap_filter = sys.argv[2:]
+            num_threads = 1
+            if len(pcap_filter) == 0:
+                process_tcpdump_output([],num_threads)
+            elif "-r" in pcap_filter :
+                tc_arguments = pcap_filter.strip("-r")
+                read_tcpdump_output([tc_arguments],num_threads)
+            elif "-h" in pcap_filter :
+                print_help_tc()
+            else:
+                process_tcpdump_output([tc_arguments],num_threads)
         
         elif option in ['-tw', '--traceroute_whois']:
             if len(sys.argv) < 3:
                 print("Enter the target to run traceroute and whois on ")
-                print_help()
+                primt_help_tw()
                 return
             options = sys.argv[2:-1]
             target = sys.argv[-1]
@@ -777,6 +830,8 @@ def main():
                 else:
                     print("Invalid options provided.")
                     print_help()
+                    print_help_trace()
+                    print_help_trace6()
             elif validate_ipv4(target):
                 if not options or '-4' in options:
                     output = run_traceroute(target, (tr_options + ['-a', '-e']))
@@ -785,7 +840,7 @@ def main():
                 else:
                     print("Invalid options provided for IPv4 target.")
                     print_help()
-
+                    print_help_trace()
             elif validate_ipv6(target):
                 if not options or '-6' in options:
                     output = run_traceroute6(target, (tr_options + ['-l']))
@@ -794,6 +849,7 @@ def main():
                 else:
                     print("Invalid options provided for IPv6 target.")
                     print_help()
+                    print_help_trace6()
             else:
                 print("Invalid target provided.")
                 print_help()
@@ -802,17 +858,15 @@ def main():
         elif option in ['-ps', '--portscan_scapy']:
             if len(sys.argv) < 3:
                 print("Enter the target to run traceroute and whois on ")
-                print_help()
+                primt_help_ps()
                 return
             if len(sys.argv) == 3:
                 target = sys.argv[-1]
                 if validate_hostname(target) or validate_ipv4(target) or validate_ipv6(target):
                     ports = [21,22,25,80,53,443,445,8080,8443]
                     open_ports = check_open_ports(target, ports)
-                    dns_scan(target)
                     print('The open ports on the destination host are:')
-                    for port in open_ports:
-                        print(port)
+                    print_colored_table_ports(open_ports)
                 else:
                     print("please enter valid ip/hostname to scan")
                     print_help()
@@ -821,79 +875,80 @@ def main():
                 if validate_hostname(target) or validate_ipv4(target) or validate_ipv6(target):
                     ports = sys.argv[2:-1]
                     open_ports = check_open_ports(target, ports)
-                    dns_scan(target)	
                     print('The open ports on the destination host are:')
-                    for port in open_ports:
-                        print(port)
+                    print_colored_table_ports(open_ports)
                 else:
                     print("please enter valid ip/hostname to scan")
                     print_help()
             pass
 
-        elif option in ['-ps', '--portscan_nmap']:
+        elif option in ['-pn', '--portscan_nmap']:
             if len(sys.argv) < 3:
-                print("Enter the target to run traceroute and whois on ")
-                print_help()
+                print("Enter the target to scan port using namp on ")
+                primt_help_pn()
                 return
             if len(sys.argv) == 3:
                 target = sys.argv[-1]
+                ports = [21, 22, 25, 80, 53, 443, 445, 8080, 8443]
                 if validate_hostname(target) or validate_ipv4(target) or validate_ipv6(target):
-                    ports = [21,22,25,80,53,443,445,8080,8443]
                     open_ports = check_open_ports_nmap(target, ports)
                     print('The open ports on the destination host are:')
-                    for port in open_ports:
-                        print(port)
                 else:
                     print("please enter valid ip/hostname to scan")
-                    print_help()
+                    primt_help_pn()
             if len(sys.argv) > 3:
                 target = sys.argv[-1]
                 if validate_hostname(target) or validate_ipv4(target) or validate_ipv6(target):
                     ports = sys.argv[2:-1]
                     open_ports = check_open_ports_nmap(target, ports)
-                    print('The open ports on the destination host are:')
-                    for port in open_ports:
-                        print(port)
+                    print("Open ports:")
+                    print_colored_table_ports(open_ports)
                 else:
                     print("please enter valid ip/hostname to scan")
-                    print_help()
+                    primt_help_pn()
             pass
-        elif option in ['-tss', '--traceroute_scapy']:
-            if len(sys.argv) < 3:
-                print("Enter the target to run traceroute using scapy on ")
-                print_help()
-                return
-            if len(sys.argv) == 3:
-                target = sys.argv[-1]
-                if validate_hostname(target) or validate_ipv4(target) or validate_ipv6(target):
-                    scapy_traceroute(target)
-                else:
-                    print("please enter valid ip/hostname to scan")
-                    print_help()
-            if len(sys.argv) > 3:
-                print("please enter only one valid ip/hostname to scan")
-                print_help()
-            pass
+
         elif option in ['-p', '--ping']:
-            '''
+            
             if len(sys.argv) < 3:
                 print("Enter the target to ping")
-                print_help()
+                primt_help_p()
                 return
-            if len(sys.argv) == 3:
+            elif len(sys.argv) == 3:
                 target = sys.argv[-1]
-                if validate_hostname(target) or validate_ipv4(target) or validate_ipv6(target):
+                if validate_hostname(target) or validate_ipv4(target):
+                        ping_ipv4(target,)
+                else validate_ipv6(target):
+                        ping_ipv6(target,)
+            elif len(sys.argv) > 3:
+                target = sys.argv[-1]
+                options = sys.argv[2:-1]
+                p_options = options.strip("-4","-6")
+                if validate_hostname(target):
+                    if not options or '-4' in options:
+                        ping_ipv4(target, p_options.split())
+                    elif '-6' in options:
+                        ping_ipv6(target, p6_options.split())
+                    else:
+                        print("Invalid options provided. ")
+                elif validate_ipv4(target):
+                    if not options or '-4' in options:
+                        ping_ipv4(target, p_options.split())
+                    else:
+                        print("Invalid options provided for IPv4 target.")
+                elif validate_ipv6(target):
+                    if not options or '-6' in options:
+                        ping_ipv6(target, p6_options.split())
+                    else:
+                        print("Invalid options provided for IPv6 target.")
                 else:
-                    print("please enter valid ip/hostname to scan")
-                    print_help()
-            if len(sys.argv) > 3:
-                print("please enter only one valid ip/hostname to scan")
-                print_help()
-            pass
-            '''
+                    print("Invalid target provided, please Run Again. ")
+
+            pass    
+
         elif option in ['-h', '--help']:
             print_help()
-        
+
         else:
             print("Invalid option.")
             print_help()
