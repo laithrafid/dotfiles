@@ -36,6 +36,7 @@ main()
 
 '''
 import re
+import os
 import sys
 import subprocess
 import socket
@@ -225,40 +226,48 @@ def get_tcpdump_version():
     tcpdump_version = subprocess.check_output(['sudo', 'tcpdump', '--version'], universal_newlines=True)
     return tcpdump_version.strip()
 
-def read_tcpdump_output(options, num_threads):
+def read_tcpdump_output(options, num_threads, pcap_input_filename=None):
     current_directory = os.getcwd()
-    pcap_input_filename = input("give me filename.pcap:")
-    pcap_input_path = input("Enter Directory of filename.pcap (Press enter If file in {current_directory}):  ")
-    pcap_file_path = (pcap_input_path + pcap_input_filename).strip(" ")
+    
+    if not pcap_input_filename:     
+        pcap_input_filename = input("Give me filename.pcap: ")
+    
+    pcap_input_path = input("Enter directory of filename.pcap (Press enter if file is in  "+ current_directory + "):")
+    if not pcap_input_path: 
+        pcap_input_path = current_directory
+
+    process_pcap_file(pcap_input_path, options, num_threads)
+    
+
+def process_pcap_file(pcap_file_path, options, num_threads):
     read_args = ['sudo', 'tcpdump', '-Knv'] + options + ['-r', pcap_file_path]
     print(Fore.RED + ' '.join(read_args) + " will run now:" + Style.RESET_ALL)
+    
     # Run tcpdump command and capture the output
     tcpdump_process = subprocess.Popen(read_args, stdout=subprocess.PIPE, bufsize=1, universal_newlines=True)
-            
+    
     # Create a list to hold the worker threads
     worker_threads = []
-
-        # Start the worker threads for processing output
+    
+    # Start the worker threads for processing output
     for _ in range(num_threads):
         output_thread = threading.Thread(target=process_output, args=(tcpdump_process,))
         output_thread.start()
         worker_threads.append(output_thread)
-
+    
     # Wait for all worker threads to finish
     for thread in worker_threads:
         thread.join()
-
+    
     # Wait for the tcpdump process to finish
     tcpdump_process.wait()
-
-    print("finished processing.")
 
 def process_tcpdump_output(options, num_threads):
     save_output = input("Do you want to save the output? (yes) or (Press enter to continoue without saving): ")
     print(Fore.RED + "Using tcpdump version:" + get_tcpdump_version() + Style.RESET_ALL)
     if save_output.lower() == "yes":
         # Run tcpdump and save output to pcap file
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
         pcap_output_filename = f"tcpdump_output_{timestamp}.pcap"
         save_args = ['sudo', 'tcpdump'] + options + ['-w', pcap_output_filename]
         print(Fore.RED + ' '.join(save_args) + " will run now:" + Style.RESET_ALL)
@@ -501,29 +510,34 @@ def print_help_ping6():
     print(p6_options_prompt)
 
 def print_help_trace():
-    tr_options_prompt = subprocess.run(["traceroute", "-h"], capture_output=True, text=True).stdout.strip().splitlines()
+    tr_options_prompt = subprocess.run(["traceroute", "-h"], text=True).stdout
     print(tr_options_prompt)
 
 def print_help_trace6():
-    tr6_options_prompt = subprocess.run(["traceroute6", "-h"], capture_output=True, text=True).stdout.strip().splitlines()
+    tr6_options_prompt = subprocess.run(["traceroute6", "-h"], text=True).stdout
     print(tr6_options_prompt)
+
+def print_help_tcpdump():
+    tc_options_prompt = subprocess.run(["tcpdump", "-h"], text=True).stdout
 
 def print_help_tc():
-    print("Usage: python netsec.py -tc, --tcpdump-color [arguments] \n")
-    print("arguments:\n")
-    print("1. no arguments this will run traceroute")
-    print("2. -r read tcpdump from file")
-    print("3. tcpdump options:")
-    tc_options_prompt = subprocess.run(["tcpdump", "-h"], capture_output=True, text=True).stdout.strip().splitlines()
-    print(tr6_options_prompt)
+    print(Fore.CYAN + "Usage: python netsec.py -tc, --tcpdump-color "+ Style.RESET_ALL + Fore.RED + "[Arguments]" + Style.RESET_ALL + "\n")
+    print(Fore.RED + "Arguments:\n"+ Style.RESET_ALL)
+    print(Fore.CYAN +"1. No arguments this will run traceroute")
+    print(Fore.CYAN +"2. -r filename.pcap read tcpdump from file")
+    print(Fore.CYAN +"3. -h Print help for this subcommand (-tc)")
+    print(Fore.CYAN + "4. tcpdump options:" + Style.RESET_ALL)
+    print_help_tcpdump()
 
 def primt_help_tw():
-    print("Usage: python netsec.py -tc, --tcpdump-color [local_options] [tr_options] [target] \n")
-    print("target:\n")
-    print("hostname or ip (v4|6)")
-    print("local_options:\n")
+    print("Usage: python netsec.py -tw,  --traceroute_whois " + Fore.CYAN + "[local_options]" + Style.RESET_ALL + Fore.RED + "[tr_options]" + Style.RESET_ALL + Fore.GREEN +"[target]" + Style.RESET_ALL +"\n")
+    print(Fore.GREEN +"target:" + Style.RESET_ALL)
+    print("hostname examples (google.com)")
+    print("IPV4               (8.8.8.8)")
+    print("IPV6               (2607:f8b0:4004:809::200e)")
+    print(Fore.CYAN + "local_options:" + Style.RESET_ALL)
     print(" -4 or -6 for target[hostname]")
-    print("tr_options:\n")
+    print(Fore.RED + "tr_options:" + Style.RESET_ALL)
     print_help_trace()
     print_help_trace6()
 
@@ -677,7 +691,7 @@ def main():
                     num_threads = 1
                     color_output = input("Read a file with colors or live? (yes for Read)(no for live) :")
                     if color_output == "yes":
-                        read_tcpdump_output([], num_threads) 
+                        read_tcpdump_output([], num_threads,) 
                     elif color_output == "no":
                         process_tcpdump_output([],num_threads)
                     else:
@@ -713,7 +727,7 @@ def main():
                     # Call tcpdump function with the constructed pcap filter expression
                     color_output = input("Read a file with colors or live? (yes for Read)(no for live) :")
                     if color_output == "yes":
-                        read_tcpdump_output([pcap_filter], num_threads)
+                        read_tcpdump_output([pcap_filter], num_threads,)
                     elif color_output == "no":
                         process_tcpdump_output([pcap_filter], num_threads)
                     else:
@@ -798,16 +812,18 @@ def main():
         option = sys.argv[1]
         if option in ['-tc', '--tcpdump-color']:
             pcap_filter = sys.argv[2:]
-            num_threads = 1
+            tc_arguments = [arg for arg in pcap_filter if arg != "-r"]
+            tc_arguments_str = ' '.join(tc_arguments)
+            num_threads = 4
+            pcap_input_path = [arg for arg in pcap_filter if arg.endswith(".pcap")]
             if len(pcap_filter) == 0:
                 process_tcpdump_output([],num_threads)
             elif "-r" in pcap_filter :
-                tc_arguments = pcap_filter.strip("-r")
-                read_tcpdump_output([tc_arguments],num_threads)
+                read_tcpdump_output(tc_arguments_str,num_threads,pcap_input_path)
             elif "-h" in pcap_filter :
                 print_help_tc()
             else:
-                process_tcpdump_output([tc_arguments],num_threads)
+                process_tcpdump_output([pcap_filter],num_threads)
         
         elif option in ['-tw', '--traceroute_whois']:
             if len(sys.argv) < 3:
@@ -817,6 +833,9 @@ def main():
             options = sys.argv[2:-1]
             target = sys.argv[-1]
             tr_options = extract_tr_options(options)
+            if '-h' in options:
+                primt_help_tw()
+
             if validate_hostname(target):
                 if not options or '-4' in options:
                     output = run_traceroute(target, (tr_options + ['-a', '-e']))
@@ -828,9 +847,7 @@ def main():
                     print(table)
                 else:
                     print("Invalid options provided.")
-                    print_help()
-                    print_help_trace()
-                    print_help_trace6()
+                    primt_help_tw()
             elif validate_ipv4(target):
                 if not options or '-4' in options:
                     output = run_traceroute(target, (tr_options + ['-a', '-e']))
@@ -838,7 +855,6 @@ def main():
                     print(table)
                 else:
                     print("Invalid options provided for IPv4 target.")
-                    print_help()
                     print_help_trace()
             elif validate_ipv6(target):
                 if not options or '-6' in options:
@@ -847,11 +863,11 @@ def main():
                     print(table)
                 else:
                     print("Invalid options provided for IPv6 target.")
-                    print_help()
                     print_help_trace6()
             else:
                 print("Invalid target provided.")
                 print_help()
+                primt_help_tw()
             pass
 
         elif option in ['-ps', '--portscan_scapy']:
