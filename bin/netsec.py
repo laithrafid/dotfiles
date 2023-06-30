@@ -78,12 +78,12 @@ def validate_ipv6(ipv6):
 
 def extract_tr_options(options):
     # Extract options other than -4, -6, -how, and --how
-    tr_options = [opt for opt in options if opt not in ['-4', '-6', '-how', '--how']]
+    tr_options = [opt for opt in options if opt not in ['-4', '-6']]
     return tr_options
 
 def extract_local_options(options):
     # Extract options other than -4, -6, -how, and --how
-    local_options = [opt for opt in options if opt in ['-4', '-6', '-how', '--how']]
+    local_options = [opt for opt in options if opt in ['-4', '-6']]
     return local_options
 
 def classify_ipv4(ipv4_address):
@@ -489,7 +489,7 @@ def print_help():
     print("  -tw, --traceroute_whois  Run traceroute(4|6) and whois on hostname/ip hops")
     print("  -ps, --portscan_scapy    Run ports scan using scapy with colorized output")
     print("  -pn, --portscan_nmap     Run ports scan using Nmap with colorized output")
-    pritn("  -p , --ping              Run ping(4|6) with colorized output")
+    print("  -p , --ping              Run ping(4|6) with colorized output")
     print("  -h , --help              Show help")
 
 def print_help_ping4():
@@ -552,7 +552,6 @@ def primt_help_p():
     print("options:\n")
     print_help_ping4()
     print_help_trace6()
-   
 
 def print_colored_output(output):
     # Define colors
@@ -917,9 +916,11 @@ def main():
             elif len(sys.argv) == 3:
                 target = sys.argv[-1]
                 if validate_hostname(target) or validate_ipv4(target):
-                        ping_ipv4(target,)
-                else validate_ipv6(target):
-                        ping_ipv6(target,)
+                    ping_ipv4(target,)
+                elif validate_ipv6(target):
+                    ping_ipv6(target,)
+                else:
+                     primt_help_p()
             elif len(sys.argv) > 3:
                 target = sys.argv[-1]
                 options = sys.argv[2:-1]
