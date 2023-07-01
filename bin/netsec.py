@@ -159,7 +159,7 @@ def process_line(line):
     port2_color = Fore.RED
     filter_ok_color = Fore.GREEN
     filter_end_color = Fore.RED
-    
+    proc_color = Fore.CYAN
     # Chunk 1: Collect packet data
     if re.match(r'\t0x', line):
         hex_data = re.search(r'^[\t\s]+0x(.*)', line).group(1)
@@ -226,7 +226,7 @@ def get_tcpdump_version():
     tcpdump_version = subprocess.check_output(['sudo', 'tcpdump', '--version'], universal_newlines=True)
     return tcpdump_version.strip()
 
-def read_tcpdump_output(options, num_threads, pcap_input_filename=None):
+def read_tcpdump_output(options, num_threads, pcap_input_filename):
     current_directory = os.getcwd()
     
     if not pcap_input_filename:     
@@ -234,13 +234,17 @@ def read_tcpdump_output(options, num_threads, pcap_input_filename=None):
     
     pcap_input_path = input("Enter directory of filename.pcap (Press enter if file is in  "+ current_directory + "):")
     if not pcap_input_path: 
-        pcap_input_path = current_directory
+        pcap_input_path = current_directory + "/"
 
-    process_pcap_file(pcap_input_path, options, num_threads)
+    pcap_input_path = ''.join(pcap_input_path)
+    pcap_input_filename = ''.join(pcap_input_filename)
+    pcap_input_filename = str(pcap_input_filename)
+    pcap_input_path = str(pcap_input_path)
+    pcap_input_all = str(pcap_input_path  +  pcap_input_filename)
+    process_pcap_file(pcap_input_all, options, num_threads)
     
-
 def process_pcap_file(pcap_file_path, options, num_threads):
-    read_args = ['sudo', 'tcpdump', '-Knv'] + options + ['-r', pcap_file_path]
+    read_args = ['sudo', 'tcpdump', '-Knv'] + options.split() + ['-r', pcap_file_path]
     print(Fore.RED + ' '.join(read_args) + " will run now:" + Style.RESET_ALL)
     
     # Run tcpdump command and capture the output
@@ -491,8 +495,8 @@ def check_open_ports_nmap(target, ports=None):
 
 def print_help():
     print("This script is built to run on Windows, Linux, or macOS.")
-    print("Usage: python netsec.py [option] [arguments] \n")
-    print("Options:\n")
+    print(Fore.MAGENTA + "Usage:" + Style.RESET_ALL + " python netsec.py "+ Fore.CYAN + "[Option]" + Style.RESET_ALL +  Fore.RED + " [Arguments]" + Style.RESET_ALL +"\n")
+    print(Fore.CYAN + "Options:"+ Style.RESET_ALL +"\n")
     print("  -i, --interactive        Run the script in interactive mode")
     print("  -tc, --tcpdump-color     Run tcpdump with colorized output")
     print("  -tw, --traceroute_whois  Run traceroute(4|6) and whois on hostname/ip hops")
@@ -500,6 +504,9 @@ def print_help():
     print("  -pn, --portscan_nmap     Run ports scan using Nmap with colorized output")
     print("  -p , --ping              Run ping(4|6) with colorized output")
     print("  -h , --help              Show help")
+    print(Fore.RED + "Arguments:" + Style.RESET_ALL +"\n")
+    print("for option specific arguments use options -h")
+    print("example: netsec.py -tc -h")
 
 def print_help_ping4():
     p4_options_prompt = subprocess.run(["ping", "-h"], text=True).stdout
@@ -511,26 +518,25 @@ def print_help_ping6():
 
 def print_help_trace():
     tr_options_prompt = subprocess.run(["traceroute", "-h"], text=True).stdout
-    print(tr_options_prompt)
 
 def print_help_trace6():
     tr6_options_prompt = subprocess.run(["traceroute6", "-h"], text=True).stdout
-    print(tr6_options_prompt)
 
 def print_help_tcpdump():
     tc_options_prompt = subprocess.run(["tcpdump", "-h"], text=True).stdout
 
 def print_help_tc():
-    print(Fore.CYAN + "Usage: python netsec.py -tc, --tcpdump-color "+ Style.RESET_ALL + Fore.RED + "[Arguments]" + Style.RESET_ALL + "\n")
-    print(Fore.RED + "Arguments:\n"+ Style.RESET_ALL)
-    print(Fore.CYAN +"1. No arguments this will run traceroute")
-    print(Fore.CYAN +"2. -r filename.pcap read tcpdump from file")
-    print(Fore.CYAN +"3. -h Print help for this subcommand (-tc)")
-    print(Fore.CYAN + "4. tcpdump options:" + Style.RESET_ALL)
+    print(Fore.MAGENTA + "Usage:" + Style.RESET_ALL + "python netsec.py -tc, --tcpdump-color "+ Style.RESET_ALL + Fore.RED + "[Arguments]" + Style.RESET_ALL + "\n")
+    print(Fore.RED + "[Arguments]:\n"+ Style.RESET_ALL)
+    print("1. No arguments this will run traceroute without any filters")
+    print("  Exampes: host -i src dst proto -Q pid=")
+    print("2. -r filename.pcap read tcpdump from file")
+    print("3. -h Print help for this subcommand (-tc)")
+    print("4. tcpdump options:" + Style.RESET_ALL)
     print_help_tcpdump()
 
 def primt_help_tw():
-    print("Usage: python netsec.py -tw,  --traceroute_whois " + Fore.CYAN + "[local_options]" + Style.RESET_ALL + Fore.RED + "[tr_options]" + Style.RESET_ALL + Fore.GREEN +"[target]" + Style.RESET_ALL +"\n")
+    print(Fore.MAGENTA + "Usage:" + Style.RESET_ALL + " python netsec.py -tw,  --traceroute_whois " + Fore.CYAN + "[local_options]" + Style.RESET_ALL + Fore.RED + "[tr_options]" + Style.RESET_ALL + Fore.GREEN +"[target]" + Style.RESET_ALL +"\n")
     print(Fore.GREEN +"target:" + Style.RESET_ALL)
     print("hostname examples (google.com)")
     print("IPV4               (8.8.8.8)")
@@ -542,28 +548,34 @@ def primt_help_tw():
     print_help_trace6()
 
 def primt_help_ps():
-    print("Usage: python netsec.py -ps, --portscan_scapy [ports] [target] \n")
-    print("target:\n")
-    print("hostname or ip (v4|6)")
-    print("ports:\n")
+    print(Fore.MAGENTA + "Usage:" + Style.RESET_ALL + " python netsec.py -ps, --portscan_scapy "+ Style.RESET_ALL + Fore.RED + "[ports]" + Style.RESET_ALL + Fore.GREEN +"[target]"+ Style.RESET_ALL +"\n")
+    print(Fore.GREEN +"target:" + Style.RESET_ALL)
+    print("hostname examples (google.com)")
+    print("IPV4               (8.8.8.8)")
+    print("IPV6               (2607:f8b0:4004:809::200e)")
+    print(Fore.RED + "ports" + Style.RESET_ALL)
     print("port[s] separated by spaces")
     print("if no port[s] entered, these ports will be scanned [21,22,25,80,53,443,445,8080,8443]")
 
 def primt_help_pn():
-    print("Usage: python netsec.py -pn, --portscan_nmap [ports] [target] \n")
-    print("target:\n")
-    print("hostname or ip (v4|6)")
-    print("ports:\n")
+    print(Fore.MAGENTA + "Usage:" + Style.RESET_ALL + " python netsec.py -pn, --portscan_nmap "+ Style.RESET_ALL + Fore.RED + "[ports]" + Style.RESET_ALL + Fore.GREEN +"[target]"+ Style.RESET_ALL +"\n")
+    print(Fore.GREEN +"target:" + Style.RESET_ALL)
+    print("hostname examples (google.com)")
+    print("IPV4               (8.8.8.8)")
+    print("IPV6               (2607:f8b0:4004:809::200e)")
+    print(Fore.RED + "ports" + Style.RESET_ALL)
     print("port[s] separated by spaces")
     print("if no port[s] entered, these ports will be scanned [21,22,25,80,53,443,445,8080,8443]")
 
 def primt_help_p():
-    print("Usage: python netsec.py -p, --ping [options] [local_options] [target] \n")
-    print("target:\n")
-    print("hostname or ip (v4|6)")
-    print("local_options:\n")
+    print(Fore.MAGENTA + "Usage:" + Style.RESET_ALL + " python netsec.py -p, --ping "+ Fore.RED + "[ping_options]" + Style.RESET_ALL + Fore.CYAN + "[local_options]" + Style.RESET_ALL + Fore.GREEN +"[target]"+ Style.RESET_ALL +"\n")
+    print(Fore.GREEN +"target:" + Style.RESET_ALL)
+    print("hostname examples (google.com)")
+    print("IPV4               (8.8.8.8)")
+    print("IPV6               (2607:f8b0:4004:809::200e)")
+    print(Fore.CYAN + "local_options:" + Style.RESET_ALL)
     print("-4/-6 for target[hostname]")
-    print("options:\n")
+    print(Fore.RED + "ping_options:" + Style.RESET_ALL)
     print_help_ping4()
     print_help_trace6()
 
@@ -812,18 +824,18 @@ def main():
         option = sys.argv[1]
         if option in ['-tc', '--tcpdump-color']:
             pcap_filter = sys.argv[2:]
-            tc_arguments = [arg for arg in pcap_filter if arg != "-r"]
+            tc_arguments = [arg for arg in pcap_filter if arg != "-r" and not arg.endswith(".pcap")]
             tc_arguments_str = ' '.join(tc_arguments)
             num_threads = 4
-            pcap_input_path = [arg for arg in pcap_filter if arg.endswith(".pcap")]
+            pcap_input_filename = [arg for arg in pcap_filter if arg.endswith(".pcap")]
             if len(pcap_filter) == 0:
                 process_tcpdump_output([],num_threads)
             elif "-r" in pcap_filter :
-                read_tcpdump_output(tc_arguments_str,num_threads,pcap_input_path)
+                read_tcpdump_output(tc_arguments_str,num_threads,pcap_input_filename)
             elif "-h" in pcap_filter :
                 print_help_tc()
             else:
-                process_tcpdump_output([pcap_filter],num_threads)
+                process_tcpdump_output(tc_arguments,num_threads)
         
         elif option in ['-tw', '--traceroute_whois']:
             if len(sys.argv) < 3:
@@ -866,7 +878,6 @@ def main():
                     print_help_trace6()
             else:
                 print("Invalid target provided.")
-                print_help()
                 primt_help_tw()
             pass
 
@@ -883,8 +894,8 @@ def main():
                     print('The open ports on the destination host are:')
                     print_colored_table_ports(open_ports)
                 else:
-                    print("please enter valid ip/hostname to scan")
-                    print_help()
+                    print(Fore.RED + "Please enter valid ip/hostname to scan" + Style.RESET_ALL)
+                    primt_help_ps()
             if len(sys.argv) > 3:
                 target = sys.argv[-1]
                 if validate_hostname(target) or validate_ipv4(target) or validate_ipv6(target):
@@ -893,8 +904,8 @@ def main():
                     print('The open ports on the destination host are:')
                     print_colored_table_ports(open_ports)
                 else:
-                    print("please enter valid ip/hostname to scan")
-                    print_help()
+                    print(Fore.RED + "Please enter valid ip/hostname to scan" + Style.RESET_ALL)
+                    primt_help_ps()
             pass
 
         elif option in ['-pn', '--portscan_nmap']:
@@ -909,7 +920,7 @@ def main():
                     open_ports = check_open_ports_nmap(target, ports)
                     print('The open ports on the destination host are:')
                 else:
-                    print("please enter valid ip/hostname to scan")
+                    print(Fore.RED + "Please enter valid ip/hostname to scan" + Style.RESET_ALL)
                     primt_help_pn()
             if len(sys.argv) > 3:
                 target = sys.argv[-1]
@@ -919,7 +930,7 @@ def main():
                     print("Open ports:")
                     print_colored_table_ports(open_ports)
                 else:
-                    print("please enter valid ip/hostname to scan")
+                    print(Fore.RED + "Please enter valid ip/hostname to scan" + Style.RESET_ALL)
                     primt_help_pn()
             pass
 
