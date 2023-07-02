@@ -70,9 +70,12 @@ import grp
 import platform
 import sys
 import subprocess
+import readline
 import datetime
+import getpass
 import psutil
 import plistlib
+import colorama
 from prettytable import PrettyTable
 from colorama import init, Fore, Style
 from tabulate import tabulate
@@ -81,8 +84,8 @@ from termcolor import colored
 #################### Utility Functions:
 
 def print_help():
-    print("Usage: python ugsec.py [option] [arguments]\n")
-    print("Options:")
+    print(Fore.MAGENTA + "Usage:" + Style.RESET_ALL + " python ugsec.py "+ Fore.CYAN + "[Option]" + Style.RESET_ALL + Fore.RED + " [Arguments]" + Style.RESET_ALL +"\n")
+    print(Fore.CYAN + "Options:"+ Style.RESET_ALL +"\n")
     print("  -i, --interactive      Run the script in interactive mode")
     print("  -ut, --users-table      Print the table of all users")
     print("  -ud, --users_discovery  print users who are Administrators and more")
@@ -96,6 +99,9 @@ def print_help():
     print("  -ag, --add-group        Add a new group with the specified group name")
     print("  -dum, --delete-user-memberships    Delete user memberships from a group")
     print("  -h, --help             Show help")
+    print_message("error", f"Arguments:")
+    print("for option specific arguments use options -h")
+    print("example: ugsec.py -ut -h")
 
 def colorize_column(value, condition, color):
     if condition:
@@ -190,7 +196,7 @@ def get_group_info():
         return group_info
 
     except subprocess.CalledProcessError:
-        print("Failed to retrieve group information.")
+        print_message("error", f"Failed to retrieve group information.")
         return []
 
 def get_user_groups(username):
@@ -373,7 +379,7 @@ def get_process_info(process):
         return pid, state, domain
 
     except subprocess.CalledProcessError as e:
-        print(f"Error running launchctl print for process {process}: {e.stderr}")
+        print_message("error", f"Error running launchctl print for process {process}: {e.stderr}")
         return "", "", ""
 
 def get_plist_info(plist_path):
@@ -383,8 +389,8 @@ def get_plist_info(plist_path):
             plist = plistlib.loads(plist_data)
             return plist
     except Exception as e:
-        print(f"Error parsing plist file: {plist_path}")
-        print(f"Error message: {str(e)}")
+        print_message("error", f"Error parsing plist file: {plist_path}")
+        print_message("error", f"Error message: {str(e)}")
         return None
 
 
@@ -440,15 +446,15 @@ def display_group_table(group_info):
         colored_raw = colorize_column(i, True, Fore.RED)
         group_table.add_row([colored_raw, colored_group, colored_users, colored_comment])
 
-    print("Group Information:")
+    print_message("info", f"Group Information:")
     print(group_table)
 
     total_groups = len(group_info)
-    print(f"Total number of groups: {total_groups}")
+    print_message("info", f"Total number of groups: {total_groups}")
 
 def display_network_services(services, protocol):
     if not services:
-        print(f"No network services ({protocol}) found.")
+        print_message("error", f"No network services ({protocol}) found.")
         return
     
     table = PrettyTable()
@@ -464,7 +470,7 @@ def display_network_services(services, protocol):
         colored_name = f"{Fore.MAGENTA}{name}{Style.RESET_ALL}"
         table.add_row([colored_command, colored_pid, colored_service_type, colored_name])
 
-    print(f"Network Services ({protocol}):")
+    print_message("info", f"Network Services ({protocol}):")
     print(table)
 
 def print_horizontal_user_table(user_info):
@@ -483,7 +489,7 @@ def print_horizontal_user_table(user_info):
     for key, value in user_info.items():
         colored_key = colorize_column(key, True, Fore.WHITE)
         colored_value = colorize_column(value, True, color_list.pop(0))
-        print(f"{colored_key}: {colored_value}")
+        print_message("error", f"{colored_key}: {colored_value}")
 
 def print_user_table(data, condition_func=None, truncate=True):
     table = display_user_table(data, condition_func, truncate)
@@ -495,7 +501,7 @@ def print_group_table():
 
 def print_group_info(group_info):
     if not group_info:
-        print("No group information available.")
+        print_message("info", f"No group information available.")
         return
 
     table = PrettyTable(["Field", "Value"])
@@ -513,7 +519,7 @@ def print_group_info(group_info):
 
 def print_open_files(open_files):
     if not open_files:
-        print("No open files found.")
+        print_message("info", f"No open files found.")
     else:
         table = PrettyTable(["Command", "PID", "User", "FD", "Type", "Size", "Name"])
         color_list = [
@@ -534,7 +540,7 @@ def print_open_files(open_files):
                 )
             ]
             table.add_row(colored_entries)
-        print("Open Files:")
+        print_message("info", f"Open Files:")
         print(table)
 
 def print_password_policy():
@@ -564,8 +570,8 @@ def print_plist_table():
         for plist_path in config_files:
             plist_info = get_plist_info(plist_path)
             if plist_info is None:
-                print(f"problematic Skipping plist file: {plist_path}")
-                print("Genertating table with other plists")
+                print_message("info", f"problematic Skipping plist file: {plist_path}")
+                print_message("info", f"Genertating table with other plists")
                 continue  # Skip this plist file if parsing fails
             if plist_info is not None:
                 process_name = plist_info.get("Label", "")
@@ -595,6 +601,21 @@ def print_plist_table():
 
     return tabulate(table_data, headers=headers, tablefmt="psql")
 
+def print_message(message_type,message):
+    # Define color codes
+    color_codes = {
+        'error': Fore.RED,
+        'info': Fore.CYAN,
+        'warning': Fore.YELLOW
+    }
+    color_code = color_codes[message_type]
+    # Check if the message type is valid
+    if message_type not in color_codes:
+        print_message("error", f"Invalid message type: {message_type}")
+        return
+
+    # Print the message with the corresponding color
+    print(f"{color_code}{message}{Style.RESET_ALL}")
 
 #################### User and Group Management Functions:
 
@@ -603,21 +624,21 @@ def add_user(username):
 
     # Prompt for additional options
     while True:
-        option = input("Enter additional option (e.g., -c comment, -s shell) or press Enter to skip: ")
+        option = input(Fore.MAGENTA + "Enter additional option (e.g., -c comment, -s shell) or press Enter to skip: ")
         if option:
             additional_options.append(option)
         else:
             break
 
     # Prompt for the group to add the user to
-    groupname = input("Enter the group to add the user to: ")
+    groupname = input(Fore.MAGENTA + "Enter the group to add the user to: ")
 
     # Prompt for the home directory (optional)
-    homedir = input("Enter the home directory for the user (press Enter to skip): ")
+    homedir = input(Fore.MAGENTA + "Enter the home directory for the user (press Enter to skip): ")
     homedir_option = ["NFSHomeDirectory", homedir] if homedir else []
 
     # Prompt for the password (optional)
-    password = getpass.getpass("Enter the password for the user (press Enter to skip): ")
+    password = getpass.getpass(input(Fore.MAGENTA + "Enter the password for the user (press Enter to skip): "))
     password_option = ["Password", password] if password else []
 
     try:
@@ -636,53 +657,53 @@ def add_user(username):
         # Add the user to the group
         subprocess.check_call(["sudo", "dscl", ".", "-append", "/Groups/" + groupname, "GroupMembership", username])
 
-        print(f"User '{username}' added successfully to the group '{groupname}' with additional options.")
+        print_message("error", f"User '{username}' added successfully to the group '{groupname}' with additional options.")
     except subprocess.CalledProcessError:
-        print(f"Failed to add user '{username}' to the group '{groupname}' with additional options.")
+        print_message("error", f"Failed to add user '{username}' to the group '{groupname}' with additional options.")
 
 def add_group(groupname):
     try:
         subprocess.check_call(["sudo", "dscl", ".", "-create", f"/Groups/{groupname}"])
-        print(f"Group '{groupname}' added successfully.")
+        print_message("info", f"Group '{groupname}' added successfully.")
 
         # Prompt for comment option
-        comment = input("Enter the comment for the group (press Enter to skip): ")
+        comment = input(Fore.MAGENTA + "Enter the comment for the group (press Enter to skip): ")
         if comment:
             subprocess.check_call(["sudo", "dscl", ".", "-append", f"/Groups/{groupname}", "Comment", comment])
 
         # Prompt for password option
-        password = input("Enter the password for the group (press Enter to skip): ")
+        password = input(Fore.MAGENTA + "Enter the password for the group (press Enter to skip): ")
         if password:
             subprocess.check_call(["sudo", "dscl", ".", "-append", f"/Groups/{groupname}", "Password", password])
 
         # Prompt for realname option
-        realname = input("Enter the real name for the group (press Enter to skip): ")
+        realname = input(Fore.MAGENTA + "Enter the real name for the group (press Enter to skip): ")
         if realname:
             subprocess.check_call(["sudo", "dscl", ".", "-append", f"/Groups/{groupname}", "RealName", realname])
 
         # Prompt for users to add to membership
-        users = input("Enter the username(s) to add to the group membership (separated by spaces), or press Enter to skip: ")
+        users = input(Fore.MAGENTA + "Enter the username(s) to add to the group membership (separated by spaces), or press Enter to skip: ")
         if users:
             users = users.split()
             for user in users:
                 subprocess.check_call(["sudo", "dscl", ".", "-append", f"/Groups/{groupname}", "GroupMembership", user])
 
-        print("Additional options added successfully.")
+        print_message("info", f"Additional options added successfully.")
     except subprocess.CalledProcessError:
-        print(f"Failed to add group '{groupname}' with additional options.")
+        print_message("error", f"Failed to add group '{groupname}' with additional options.")
 
 def delete_user_memberships(groupname):
     group_members = get_group_members(groupname)
     if not group_members:
-        print(f"No user memberships found in group '{groupname}'.")
+        print_message("info", f"No user memberships found in group '{groupname}'.")
         return
 
-    print(f"User Memberships in Group '{groupname}':")
+    print_message("error", f"User Memberships in Group '{groupname}':")
     for i, member in enumerate(group_members, start=1):
-        print(f"{i}. {member}")
+        print_message("error", f"{i}. {member}")
 
-    prompt = f"Enter the number(s) of the user(s) to delete from the group '{groupname}' (separated by spaces), or enter 'all' to delete all users: "
-    choice = input(prompt)
+    prompt = "Enter the number(s) of the user(s) to delete from the group '{groupname}' (separated by spaces), or enter 'all' to delete all users: "
+    choice = input(Fore.MAGENTA + prompt)
     if choice.lower() == 'all':
         users_to_delete = group_members
     else:
@@ -690,15 +711,15 @@ def delete_user_memberships(groupname):
         users_to_delete = [group_members[int(index)-1] for index in selected_indexes if index.isdigit() and 1 <= int(index) <= len(group_members)]
 
     if not users_to_delete:
-        print("No valid users selected for deletion.")
+        print_message("info", f"No valid users selected for deletion.")
         return
 
     for user in users_to_delete:
         try:
             subprocess.check_call(["dseditgroup", "-o", "edit", "-d", user, "-t", "user", groupname])
-            print(f"User '{user}' deleted from group '{groupname}' successfully.")
+            print_message("info", f"User '{user}' deleted from group '{groupname}' successfully.")
         except subprocess.CalledProcessError:
-            print(f"Failed to delete user '{user}' from group '{groupname}'.")
+            print_message("error", f"Failed to delete user '{user}' from group '{groupname}'.")
 
 def delete_users(usernames):
     deleted_users = []
@@ -706,20 +727,21 @@ def delete_users(usernames):
         deleted_users.append(name)
         try:
             subprocess.check_call(["sudo", "dscl", ".", "-delete", f"/Users/{name}"])
-            print(f"User '{name}' deleted successfully.")
+            message = f"User '{name}' deleted successfully."
+            print_message("info",message)
         except subprocess.CalledProcessError:
-            print(f"Failed to delete user: {name}")
+            print_message("error", f"Failed to delete user: {name}")
 
-        prompt = f"Do you want to delete the home directory of user '{name}' as well? (y/n): "
-        choice = input(prompt)
+        prompt = "Do you want to delete the home directory of user '{name}' as well? (y/n): "
+        choice = input(Fore.MAGENTA + prompt)
         if choice.lower() == 'y':
             try:
                 subprocess.check_call(["sudo", "rm", "-rf", f"/Users/{name}"])
-                print(f"Home directory of user '{name}' deleted successfully.")
+                print_message("info", f"Home directory of user '{name}' deleted successfully.")
             except subprocess.CalledProcessError:
-                print(f"Failed to delete home directory of user '{name}'. or user '{name}' has no directory")
+                print_message("error", f"Failed to delete home directory of user '{name}'. or user '{name}' has no directory")
     
-    print(f"Deleted user(s): {', '.join(deleted_users)}")
+    print_message("error", f"Deleted user(s): {', '.join(deleted_users)}")
 
 def delete_groups(groupnames):
     deleted_groups = []
@@ -729,24 +751,24 @@ def delete_groups(groupnames):
         try:
             subprocess.check_call(["sudo", "dscl", ".", "-delete", "/Groups/" + name])
         except subprocess.CalledProcessError:
-            print(f"Failed to delete group: {name}")
+            print_message("error", f"Failed to delete group: {name}")
 
         # Check if the group has any users as members
         group_members = get_group_members(name)
         if group_members:
-            prompt = f"The group '{name}' has {len(group_members)} user(s) as members. Do you want to delete these users as well? (y/n): "
-            choice = input(prompt)
+            prompt = "The group '{name}' has {len(group_members)} user(s) as members. Do you want to delete these users as well? (y/n): "
+            choice = input(Fore.MAGENTA + prompt)
             if choice.lower() == 'y':
                 for member in group_members:
                     try:
                         subprocess.check_call(["sudo", "dscl", ".", "-delete", f"/Users/{member}"])
                         deleted_users.append(member)
                     except subprocess.CalledProcessError:
-                        print(f"Failed to delete user: {member}")
+                        print_message("error", f"Failed to delete user: {member}")
 
-    print(f"Deleted group(s): {', '.join(deleted_groups)}")
+    print_message("info", f"Deleted group(s): {', '.join(deleted_groups)}")
     if deleted_users:
-        print(f"Deleted user(s): {', '.join(deleted_users)}")
+        print_message("error", f"Deleted user(s): {', '.join(deleted_users)}")
 
 #################### User and Group Information Functions:
 
@@ -760,14 +782,14 @@ def get_user_info_by_username(usernames):
             user_entry = pwd.getpwnam(username)
             user_info.append(get_user_info([username])[0])
         except KeyError:
-            print(f"User '{username}' not found.")
+            print_message("error", f"User '{username}' not found.")
 
     if not user_info:
         return
 
     for user_entry in user_info:
         username = user_entry["Name"]
-        print(f"User: {username}")
+        print_message("error", f"User: {username}")
         print_horizontal_user_table(user_entry)
 
         # Print network services (UDP)
@@ -780,32 +802,32 @@ def get_user_info_by_username(usernames):
 
         open_files = get_open_files(username)
         if len(open_files) > 20:
-            pid_filter = input("There are more than 20 open files. Enter a specific PID to filter the open files, or enter 'all' to print all open files (press Enter to skip): ")
+            pid_filter = input(Fore.MAGENTA +"There are more than 20 open files. Enter a specific PID to filter the open files, or enter 'all' to print all open files (press Enter to skip): ")
             if pid_filter.lower() == "all":
-                print(f"Open Files for User '{username}':")
+                print_message("info", f"Open Files for User '{username}':")
                 print_open_files(open_files)
             elif pid_filter:  # Check if the user entered a specific PID
                 filtered_files = get_open_files(username, pid_filter)
-                print(f"Open Files for User '{username}' (Filtered by PID {pid_filter}):")
+                print_message("info", f"Open Files for User '{username}' (Filtered by PID {pid_filter}):")
                 print_open_files(filtered_files)
             else:
-                print("You skipped the open file listing.")
+                print_message("info", f"You skipped the open file listing.")
         else:
             if open_files:
-                print(f"Open Files for User '{username}':")
+                print_message("info", f"Open Files for User '{username}':")
                 print_open_files(open_files)
             else:
-                print(f"No open files found for User '{username}'.")
+                print_message("info", f"No open files found for User '{username}'.")
 
 def get_group_info_by_groupname(groupname):
     if groupname.isdigit() and 0 < int(groupname) <= len(group_info):
         index = int(groupname) - 1
-        print("Group Information:")
+        print_message("info", f"Group Information:")
         print_group_info(group_info[index])
     else:
         try:
             group_info_output = subprocess.check_output(f"dscl . -read /Groups/{groupname}", shell=True, text=True)
-            print("Group Information:")
+            print_message("info", f"Group Information:")
             print(colorize_column(group_info_output, False, Fore.WHITE))  # Set 'False' as the second argument for keys
         except subprocess.CalledProcessError:
             print(colorize_column(f"Group '{groupname}' not found.", True, Fore.RED))  # Add 'True' as the second argument
@@ -813,19 +835,25 @@ def get_group_info_by_groupname(groupname):
 #################### Main Function:
 
 def main():
+    colorama.init(autoreset=True)
+    readline.parse_and_bind('"\e[A": previous-history')
+    readline.parse_and_bind('"\e[B": next-history')
+    readline.parse_and_bind('"\e[C": forward-char')
+    readline.parse_and_bind('"\e[D": backward-char')
     init()
     if len(sys.argv) < 2:
-        print("No option provided.")
+        print_message("error", f"No option provided.")
         print_help()
         return
+        
     if len(sys.argv) > 1 and (sys.argv[1] == "-i" or sys.argv[1] == "--interactive"):
         while True:
-            print("\n===========================")
-            print("User and Group Management")
-            print("===========================")
+            print_message("info", f"\n======================================================")
+            print_message("info", f"=================User and Group Management==============")
+            print_message("info", f"========================================================")
             print("Select an option:")
-            print("  1. Display User Information")
-            print("  2. Display Group Information")
+            print("  1. Display Users Information")
+            print("  2. Display Groups Information")
             print("  3. Delete User(s)")
             print("  4. Delete Group(s)")
             print("  5. Get User Information by Username")
@@ -834,63 +862,63 @@ def main():
             print("  8. Add Group")
             print("  9. Help")
             print("  0. Quit")
-            choice = input("Enter your choice: ")
+            choice = input(Fore.MAGENTA + "Enter your choice:")
             if choice == "1":
-                print("User Information:")
+                print_message("info", f"User Information:")
                 user_info = get_user_info([])
                 print_user_table(user_info, condition_func=lambda shell: shell != "/usr/bin/false", truncate=True)
                 total_users = len(user_info)
-                print(f"Total number of users: {total_users}")
+                print_message("info", f"Total number of users: {total_users}")
 
             elif choice == "2":
                 print_group_table()
 
             elif choice == "3":
-                usernames = input("Enter the username(s) to delete (separated by spaces): ").split()
+                usernames = input(Fore.MAGENTA + "Enter the username(s) to delete (separated by spaces): ").split()
                 delete_users(usernames)
 
             elif choice == "4":
-                groupnames = input("Enter the group name(s) to delete (separated by spaces): ").split()
+                groupnames = input(Fore.MAGENTA + "Enter the group name(s) to delete (separated by spaces): ").split()
                 delete_groups(groupnames)
 
             elif choice == "5":
-                username = input("Enter the username: ")
+                username = input(Fore.MAGENTA + "Enter the username: ").strip(" ")
                 get_user_info_by_username(username)
 
             elif choice == "6":
-                groupname = input("Enter the group name: ")
+                groupname = input(Fore.MAGENTA + "Enter the group name: ").strip(" ")
                 get_group_info_by_groupname(groupname)
 
             elif choice == "7":
-                username = input("Enter the username to add: ")
+                username = input(Fore.MAGENTA + "Enter the username to add: ")
                 add_user(username)
 
             elif choice == "8":
-                groupname = input("Enter the group name to add: ")
+                groupname = input(Fore.MAGENTA + "Enter the group name to add: ")
                 add_group(groupname)
 
             elif choice == "9":
                 print_help()
 
             elif choice == "10":
-                groupname = input("Enter the group name to delete users memberships: ")
+                groupname = input(Fore.MAGENTA + "Enter the group name to delete users memberships: ")
                 delete_user_memberships(groupname)
 
             elif choice == "0":
-                print("Goodbye!")
+                print_message("info", f"Goodbye!")
                 break
 
             else:
-                print("Invalid choice. Please try again.")
+                print_message("error", f"Invalid choice. Please try again.")
 
     elif len(sys.argv) >= 2:
         option = sys.argv[1]
         if option in ['-ut', '--users-table']:
-            print("User Information:")
+            print_message("info", f"User Information:")
             user_info = get_user_info([])
             print_user_table(user_info, condition_func=lambda shell: shell != "/usr/bin/false", truncate=True)
             total_users = len(user_info)
-            print(f"Total number of users: {total_users}")
+            print_message("info", f"Total number of users: {total_users}")
         
         elif option in ['-gt', '--group-table']:
             print_group_table()
@@ -902,18 +930,19 @@ def main():
             print("administrators accounts:", colored_admins)
             # Prompt for more info about administrators
             prompt = "Do you want more information about the administrators? (y/n): "
-            choice = input(prompt)
+            choice = input(Fore.MAGENTA +  prompt)
 
             if choice.lower() == 'y':
                 # Prompt for usernames
                 get_user_info_by_username(admins)
             else:
                 # Print Password Policy
-                print("Password Policy:")
+                print_message("info", f"Password Policy:")
                 print_password_policy()
+
         elif option in ['-du', '--delete-users']:
             if len(sys.argv) < 3:
-                print("Error: username not provided.")
+                print_message("error", f"Error: username not provided.")
                 print_help()
                 return
             usernames = sys.argv[2:]
@@ -921,7 +950,7 @@ def main():
 
         elif option in ['-dg', '--delete-groups']:
             if len(sys.argv) < 3:
-                print("Error: groupname not provided.")
+                print_message("error", f"Error: groupname not provided.")
                 print_help()
                 return
             groupnames = sys.argv[2:]
@@ -929,7 +958,7 @@ def main():
 
         elif option in ['-dum', '--delete-user-memberships']:
             if len(sys.argv) < 3:
-                print("Error: groupname not provided.")
+                print_message("error", f"Error: groupname not provided.")
                 print_help()
                 return
             groupname = sys.argv[2]
@@ -937,11 +966,16 @@ def main():
 
         elif option in ['-gu', '--get-user-info']:
             if len(sys.argv) < 3:
-                print("Error: username not provided.")
+                print_message("error", f"Error: username not provided.")
                 print_help()
                 return
-            username = sys.argv[2]
-            get_user_info_by_username(username)
+            elif len(sys.argv) == 3:
+                username = sys.argv[2]
+                get_user_info_by_username(username)
+            elif len(sys.argv) > 3:
+                usernames = sys.argv[2:]
+                for username in usernames:
+                    get_user_info_by_username(username)
 
         elif option in ['-gp', '--get-plists']:
             colored_table = print_plist_table()
@@ -949,7 +983,7 @@ def main():
 
         elif option in ['-gg', '--get-group-info']:
             if len(sys.argv) < 3:
-                print("ERROR: groupname not provided.")
+                print_message("error", f"Error: groupname not provided.")
                 print_help()
                 return
             groupname = sys.argv[2]
@@ -957,7 +991,7 @@ def main():
 
         elif option in ['-au', '--add-user']:
             if len(sys.argv) < 3:
-                print("Error: username not provided.")
+                print_message("error", f"Error: username not provided.")
                 print_help()
                 return
             username = sys.argv[2]
@@ -965,20 +999,22 @@ def main():
 
         elif option in ['-ag', '--add-group']:
             if len(sys.argv) < 3:
-                print("ERROR: groupname not provided.")
+                print_message("error", f"Error: groupname not provided.")
                 print_help()
                 return
             groupname = sys.argv[2]
             add_group(groupname)
+
         elif option in ['-h', '--help']:
             print_help()
 
         else:
-            print("Invalid option.")
+            print_message("error", f"Invalid option.")
             print_help()
             
     else:
-        print("Invalid option, please check below")
+        print_message("error", f"Invalid option, please check below")
         print_help()       
+
 if __name__ == "__main__":
     main()

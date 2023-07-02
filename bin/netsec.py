@@ -45,6 +45,7 @@ import ipaddress
 import readline  # Added readline module for arrow key support
 import threading
 import datetime
+import colorama
 from colorama import init, Fore, Style
 from prettytable import PrettyTable
 from termcolor import colored
@@ -138,7 +139,7 @@ def ping_ipv4(target, options):
         ping_output = subprocess.check_output(command, stderr=subprocess.STDOUT, universal_newlines=True)
         print_colored_output(ping_output)
     except subprocess.CalledProcessError as e:
-        print(f"Ping failed. Check the IPv4 address or hostname. Error: {e.output}")
+        print_message("error", f"Ping failed. Check the IPv4 address or hostname. Error: {e.output}")
 
 def ping_ipv6(target, options):
     command = ["ping6"] + options + [target]
@@ -146,7 +147,7 @@ def ping_ipv6(target, options):
         ping_output = subprocess.check_output(command, stderr=subprocess.STDOUT, universal_newlines=True)
         print_colored_output(ping_output)
     except subprocess.CalledProcessError as e:
-        print(f"Ping failed. Check the IPv6 address or hostname. Error: {e.output}")
+        print_message("error", f"Ping failed. Check the IPv6 address or hostname. Error: {e.output}")
 
 def process_line(line):
     # Define color codes
@@ -165,7 +166,7 @@ def process_line(line):
         hex_data = re.search(r'^[\t\s]+0x(.*)', line).group(1)
         hex_data = re.sub(r'\s+', '', hex_data)
         raw = bytes.fromhex(hex_data)
-        print(f'  (found {len(raw)} bytes)\n{raw}')
+        print_message("error", f"  (found {len(raw)} bytes)\n{raw}")
         return
 
     # Chunk 2.0: IPv4 address format matching
@@ -230,9 +231,9 @@ def read_tcpdump_output(options, num_threads, pcap_input_filename):
     current_directory = os.getcwd()
     
     if not pcap_input_filename:     
-        pcap_input_filename = input("Give me filename.pcap: ")
+        pcap_input_filename = input(Fore.MAGENTA + "Give me filename.pcap: ")
     
-    pcap_input_path = input("Enter directory of filename.pcap (Press enter if file is in  "+ current_directory + "):")
+    pcap_input_path = input(Fore.MAGENTA + "Enter directory of filename.pcap (Press enter if file is in  {current_directory}):")
     if not pcap_input_path: 
         pcap_input_path = current_directory + "/"
 
@@ -245,7 +246,7 @@ def read_tcpdump_output(options, num_threads, pcap_input_filename):
     
 def process_pcap_file(pcap_file_path, options, num_threads):
     read_args = ['sudo', 'tcpdump', '-Knv'] + options.split() + ['-r', pcap_file_path]
-    print(Fore.RED + ' '.join(read_args) + " will run now:" + Style.RESET_ALL)
+    print_message("error", f"{' '.join(read_args)}  will run now:")
     
     # Run tcpdump command and capture the output
     tcpdump_process = subprocess.Popen(read_args, stdout=subprocess.PIPE, bufsize=1, universal_newlines=True)
@@ -267,19 +268,19 @@ def process_pcap_file(pcap_file_path, options, num_threads):
     tcpdump_process.wait()
 
 def process_tcpdump_output(options, num_threads):
-    save_output = input("Do you want to save the output? (yes) or (Press enter to continoue without saving): ")
-    print(Fore.RED + "Using tcpdump version:" + get_tcpdump_version() + Style.RESET_ALL)
+    save_output = input(Fore.MAGENTA + "Do you want to save the output? (yes) or (Press enter to continoue without saving): ")
+    print_message("error", f"Using tcpdump version: {get_tcpdump_version()}")
     if save_output.lower() == "yes":
         # Run tcpdump and save output to pcap file
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
         pcap_output_filename = f"tcpdump_output_{timestamp}.pcap"
         save_args = ['sudo', 'tcpdump'] + options + ['-w', pcap_output_filename]
-        print(Fore.RED + ' '.join(save_args) + " will run now:" + Style.RESET_ALL)
+        print_message("error", f"{' '.join(save_args)} will run now:")
         tcpdump_process = subprocess.Popen(save_args,  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     # Run tcpdump without saving output
     tcpdump_args = ['sudo', 'tcpdump', '-Knv' ,'-tttt'] + options
-    print(Fore.RED + ' '.join(tcpdump_args) + " will run now:" + Style.RESET_ALL)
+    print_message("error", f"{' '.join(tcpdump_args)} will run now:")
     # Run tcpdump command and capture the output
     tcpdump_process = subprocess.Popen(tcpdump_args, stdout=subprocess.PIPE, bufsize=1, universal_newlines=True)
             
@@ -299,7 +300,7 @@ def process_tcpdump_output(options, num_threads):
     # Wait for the tcpdump process to finish
     tcpdump_process.wait()
 
-    print("finished processing.")
+    print_message("info", f"finished processing.")
 
 def process_output(tcpdump_process):
     for line in iter(tcpdump_process.stdout.readline, ''):
@@ -443,7 +444,7 @@ def run_traceroute(target, options):
     command = ['traceroute']
     command.extend(options)
     command.append(target)
-    #print(f"Running command: {' '.join(command)}")
+    #print_message("error", f"Running command: {' '.join(command)}")
     output = subprocess.check_output(command, universal_newlines=True)
     #print('Here is the output of traceroute:', output)
     return output
@@ -454,7 +455,7 @@ def run_traceroute6(target, options):
     command = ['traceroute6']
     command.extend(options)
     command.append(target)
-    #print(f"Running command: {' '.join(command)}")
+    #print_message("error", f"Running command: {' '.join(command)}")
     output = subprocess.check_output(command, universal_newlines=True)
     #print('hereis the output of traceroute6', output)
     return output
@@ -463,35 +464,57 @@ def check_open_ports(target, ports):
     open_ports = []
     progress = 0
     for port in ports:
+        port = int(port)
         packet = scapy.IP(dst=target)/scapy.TCP(dport=port, flags='S')
         response = scapy.sr1(packet, timeout=2, verbose=0)
         if response and response.haslayer(scapy.TCP) and response.getlayer(scapy.TCP).flags == 'SA':
             open_ports.append(port)
         progress += 1
-        print(f"{progress}/{len(ports)} ports scanned...", end="\r")
+        print_message("error",f"{progress}/{len(ports)} ports scanned...end=\r")
     return open_ports
+
+import nmap
 
 def check_open_ports_nmap(target, ports=None):
-    if ports is None:
-        # Default ports to scan if no specific ports are provided
-        ports = [21, 22, 25, 80, 53, 443, 445, 8080, 8443]
-
     nm = nmap.PortScanner()
 
-    if ports:
-        nm.scan(target, ','.join(map(str, ports)))
-    else:
-        nm.scan(target)
+    if ports is None or "all" in ports:
+        ports = range(1, 65536)  # Scan all ports
 
+    total_ports = len(ports)
     open_ports = []
-    for host in nm.all_hosts():
-        for port in nm[host]['tcp']:
-            if nm[host]['tcp'][port]['state'] == 'open':
+
+    for i, port in enumerate(ports, start=1):
+        print_message("info",f"Scanning port {port}/{total_ports}...for target:{target}")
+
+        nm.scan(target, str(port), arguments='-Pn -T4')
+
+        for host in nm.all_hosts():
+            if nm[host].has_tcp(port) and nm[host]['tcp'][port]['state'] == 'open':
                 open_ports.append(port)
+                break
 
     return open_ports
 
+
+
+
 #################### Display Functions:
+def print_message(message_type,message):
+    # Define color codes
+    color_codes = {
+        'error': Fore.RED,
+        'info': Fore.CYAN,
+        'warning': Fore.YELLOW
+    }
+    color_code = color_codes[message_type]
+    # Check if the message type is valid
+    if message_type not in color_codes:
+        print_message("error", f"Invalid message type: {message_type}")
+        return
+
+    # Print the message with the corresponding color
+    print(f"{color_code}{message}{Style.RESET_ALL}")
 
 def print_help():
     print("This script is built to run on Windows, Linux, or macOS.")
@@ -504,7 +527,7 @@ def print_help():
     print("  -pn, --portscan_nmap     Run ports scan using Nmap with colorized output")
     print("  -p , --ping              Run ping(4|6) with colorized output")
     print("  -h , --help              Show help")
-    print(Fore.RED + "Arguments:" + Style.RESET_ALL +"\n")
+    print_message("error", f"Arguments:\n")
     print("for option specific arguments use options -h")
     print("example: netsec.py -tc -h")
 
@@ -527,12 +550,12 @@ def print_help_tcpdump():
 
 def print_help_tc():
     print(Fore.MAGENTA + "Usage:" + Style.RESET_ALL + "python netsec.py -tc, --tcpdump-color "+ Style.RESET_ALL + Fore.RED + "[Arguments]" + Style.RESET_ALL + "\n")
-    print(Fore.RED + "[Arguments]:\n"+ Style.RESET_ALL)
+    print_message("error", f"[Arguments]:\n")
     print("1. No arguments this will run traceroute without any filters")
     print("  Exampes: host -i src dst proto -Q pid=")
     print("2. -r filename.pcap read tcpdump from file")
     print("3. -h Print help for this subcommand (-tc)")
-    print("4. tcpdump options:" + Style.RESET_ALL)
+    print("4. tcpdump options:")
     print_help_tcpdump()
 
 def primt_help_tw():
@@ -543,7 +566,7 @@ def primt_help_tw():
     print("IPV6               (2607:f8b0:4004:809::200e)")
     print(Fore.CYAN + "local_options:" + Style.RESET_ALL)
     print(" -4 or -6 for target[hostname]")
-    print(Fore.RED + "tr_options:" + Style.RESET_ALL)
+    print_message("error", f"tr_options:")
     print_help_trace()
     print_help_trace6()
 
@@ -553,7 +576,7 @@ def primt_help_ps():
     print("hostname examples (google.com)")
     print("IPV4               (8.8.8.8)")
     print("IPV6               (2607:f8b0:4004:809::200e)")
-    print(Fore.RED + "ports" + Style.RESET_ALL)
+    print_message("error", f"ports")
     print("port[s] separated by spaces")
     print("if no port[s] entered, these ports will be scanned [21,22,25,80,53,443,445,8080,8443]")
 
@@ -563,7 +586,7 @@ def primt_help_pn():
     print("hostname examples (google.com)")
     print("IPV4               (8.8.8.8)")
     print("IPV6               (2607:f8b0:4004:809::200e)")
-    print(Fore.RED + "ports" + Style.RESET_ALL)
+    print_message("error", f"ports")
     print("port[s] separated by spaces")
     print("if no port[s] entered, these ports will be scanned [21,22,25,80,53,443,445,8080,8443]")
 
@@ -575,7 +598,7 @@ def primt_help_p():
     print("IPV6               (2607:f8b0:4004:809::200e)")
     print(Fore.CYAN + "local_options:" + Style.RESET_ALL)
     print("-4/-6 for target[hostname]")
-    print(Fore.RED + "ping_options:" + Style.RESET_ALL)
+    print_message("error", f"ping_options:")
     print_help_ping4()
     print_help_trace6()
 
@@ -609,39 +632,44 @@ def print_colored_table_ports(open_ports):
 #################### Main Function:
 
 def main():
+    colorama.init(autoreset=True)
+    readline.parse_and_bind('"\e[A": previous-history')
+    readline.parse_and_bind('"\e[B": next-history')
+    readline.parse_and_bind('"\e[C": forward-char')
+    readline.parse_and_bind('"\e[D": backward-char')
     if len(sys.argv) < 2:
-        print("No option provided.")
+        print_message("error", f"No option provided.")
         print_help()
         return
 
     if len(sys.argv) > 1 and (sys.argv[1] == "-i" or sys.argv[1] == "--interactive"):
      	while True:
-            print("\n===========================")
-            print("Network and Security Management")
-            print("===========================")
-            print("Select an option:")
-            print(Fore.CYAN + "  1. Ping" + Style.RESET_ALL)
-            print(Fore.CYAN + "  2. Run tcpdump with color" + Style.RESET_ALL)
-            print(Fore.CYAN + "  3. Traceroute with whois" + Style.RESET_ALL)
-            print(Fore.CYAN + "  4. Portscan using scapy" + Style.RESET_ALL)
-            print(Fore.CYAN + "  5. Portscan using Nmap" + Style.RESET_ALL)
+            print_message("info", f"\n========================================================================================")
+            print_message("info", f"==============================Network and Security Management=============================")
+            print_message("info", f"==========================================================================================")
+            print_message("info", f"Select an option:")
+            print_message("info", f"  1. Ping")
+            print_message("info", f"  2. Run tcpdump with color")
+            print_message("info", f"  3. Traceroute with whois")
+            print_message("info", f"  4. Portscan using scapy")
+            print_message("info", f"  5. Portscan using Nmap")
             print(Fore.YELLOW + "  6. Help" + Style.RESET_ALL)
             print(Fore.RED +"  0. Quit" + Style.RESET_ALL)
             pass
-            choice = input(Fore.GREEN + "Enter your choice: " +  Style.RESET_ALL)
+            choice = input(Fore.MAGENTA +  "Enter your choice: " )
             if choice == "1":
-                target = input("Enter the IP address or hostname to ping: ")
+                target = input(Fore.MAGENTA + "Enter the IP address or hostname to ping:")
                 target = target.strip(" ")
-                options = input("Enter the option(s) -4 or -6 for target(hostname), Press Enter for Autorun(target/hostname>ipv4) or if target(IPv4/IPv6) ping : ")
+                options = input(Fore.MAGENTA + "Enter the option(s) -4 or -6 for target(hostname), Press Enter for Autorun(target/hostname>ipv4) or if target(IPv4/IPv6) ping : ")
                 
                 if options == "-4":
                     print_help_ping4()
-                    p_options = input("Enter Ping options(Press Enter to skip):")
+                    p_options = input(Fore.MAGENTA + "Enter Ping options(Press Enter to skip):")
                 elif options == "-6":
                     print_help_ping6()
-                    p6_options = input("Enter Ping options(Press Enter to skip):")
+                    p6_options = input(Fore.MAGENTA + "Enter Ping options(Press Enter to skip):")
                 else:
-                    p_options = input("Enter Ping options(Press Enter to skip):")
+                    p_options = input(Fore.MAGENTA + "Enter Ping options(Press Enter to skip):")
 
                 if validate_hostname(target):
                     if not options or '-4' in options:
@@ -649,19 +677,19 @@ def main():
                     elif '-6' in options:
                         ping_ipv6(target, p6_options.split())
                     else:
-                        print("Invalid options provided. ")
+                        print_message("error", f"Invalid options provided. ")
                 elif validate_ipv4(target):
                     if not options or '-4' in options:
                         ping_ipv4(target, p_options.split())
                     else:
-                        print("Invalid options provided for IPv4 target.")
+                        print_message("error", f"Invalid options provided for IPv4 target.")
                 elif validate_ipv6(target):
                     if not options or '-6' in options:
                         ping_ipv6(target, p6_options.split())
                     else:
-                        print("Invalid options provided for IPv6 target.")
+                        print_message("error", f"Invalid options provided for IPv6 target.")
                 else:
-                    print("Invalid target provided, please Run Again. ")
+                    print_message("error", f"Invalid target provided, please Run Again. ")
 
             elif choice == "2":
                 filter_choices = {
@@ -678,30 +706,30 @@ def main():
                 "2": "or",
                 "3": "not"
                 }
-                print("Select the main tcpdump filters (you can choose multiple options, press 'Enter' to skip):")
-                print(Fore.CYAN + "  1. Port" + Style.RESET_ALL)
-                print(Fore.CYAN + "  2. Host" + Style.RESET_ALL)
-                print(Fore.CYAN + "  3. Interface" + Style.RESET_ALL)
-                print(Fore.CYAN + "  4. Source IP" + Style.RESET_ALL)
-                print(Fore.CYAN + "  5. Destination IP" + Style.RESET_ALL)
-                print(Fore.CYAN + "  6. Protocol" + Style.RESET_ALL)
-                print(Fore.CYAN + "  7. PID" + Style.RESET_ALL)
-                print(Fore.RED + "if No filter selected, tcpdump run without any filter(Press Enter)" + Style.RESET_ALL)
+                print_message("info", f"Select the main tcpdump filters (you can choose multiple options, press 'Enter' to skip):")
+                print_message("info", "  1. Port" )
+                print_message("info", "  2. Host" )
+                print_message("info", f"  3. Interface")
+                print_message("info", f"  4. Source IP")
+                print_message("info", f"  5. Destination IP")
+                print_message("info", "  6. Protocol" )
+                print_message("info", f"  7. PID")
+                print_message("error", f"if No filter selected, tcpdump run without any filter(Press Enter)")
                 selected_filters = []
                 while True:
-                    choice = input("Enter the filter choice (1-6) or press 'Enter' to skip: ")
+                    choice = input(Fore.MAGENTA + "Enter the filter choice (1-6) or press 'Enter' to skip: ")
                     if choice == "":
                         break
                     if choice in filter_choices:
                         selected_filter = filter_choices[choice]
                         selected_filters.append(selected_filter)
                     else:
-                        print("Invalid choice.")
+                        print_message("error", f"Invalid choice.")
                 # If no filters were selected, run tcpdump with no filters    
                 if not selected_filters:
-                    print("Running tcpdump with no filters.")
+                    print_message("info", f"Running tcpdump with no filters.")
                     num_threads = 1
-                    color_output = input("Read a file with colors or live? (yes for Read)(no for live) :")
+                    color_output = input(Fore.MAGENTA + "Read a file with colors or live? (yes for Read)(no for live) :")
                     if color_output == "yes":
                         read_tcpdump_output([], num_threads,) 
                     elif color_output == "no":
@@ -711,18 +739,18 @@ def main():
                 else:
                     logical_operator = ""
                     if len(selected_filters) > 1:
-                        print("Select the logical operator to combine the filters:")
-                        print("  1. AND")
-                        print("  2. OR")
-                        print("  3. NOT")
-                        operator_choice = input("Enter your choice (1-3): ")
+                        print_message("info", f"Select the logical operator to combine the filters:")
+                        print_message("info", f"  1. AND")
+                        print_message("info", f"  2. OR")
+                        print_message("info", f"  3. NOT")
+                        operator_choice = input(Fore.MAGENTA + "Enter your choice (1-3): ")
                         if operator_choice in logical_operators:
                             logical_operator = logical_operators[operator_choice] 
                         else:
-                            print("Invalid choice. Using default logical operator 'AND'.")
+                            print_message("error", f"Invalid choice. Using default logical operator 'AND'.")
                             logical_operator = "and"
                     elif len(selected_filters) == 1:
-                        operator_choice = input("for logical operator NOT please Enter 3 (or Enter to skip) :")
+                        operator_choice = input(Fore.MAGENTA + "for logical operator NOT please Enter 3 (or Enter to skip) :")
                         if operator_choice in logical_operators:
                             logical_operator = logical_operators[operator_choice] 
                     else:
@@ -731,13 +759,13 @@ def main():
                     # Construct the pcap filter expression based on the selected filters and logical operator
                     pcap_filter = ""
                     for selected_filter in selected_filters:
-                        value = input(f"Enter the value for {selected_filter}: ")
+                        value = input(Fore.MAGENTA + "Enter the value for {selected_filter}: ")
                         pcap_filter += f"{selected_filter} {value} {logical_operator} "
                     # Remove the trailing logical operator from the filter expression
-                    pcap_filter = pcap_filter.rstrip(f" {logical_operator} ")
+                    pcap_filter = pcap_filter.rstrip(" {logical_operator} ")
                     num_threads = 1
                     # Call tcpdump function with the constructed pcap filter expression
-                    color_output = input("Read a file with colors or live? (yes for Read)(no for live) :")
+                    color_output = input(Fore.MAGENTA + "Read a file with colors or live? (yes for Read)(no for live) :")
                     if color_output == "yes":
                         read_tcpdump_output([pcap_filter], num_threads,)
                     elif color_output == "no":
@@ -746,18 +774,18 @@ def main():
                         break
 
             elif choice == "3":
-                target = input(Fore.CYAN +"Enter the target to run traceroute and whois on :"+  Style.RESET_ALL)
+                target = input(Fore.MAGENTA + "Enter the target to run traceroute and whois on :")
                 target = target.strip(" ")
-                options = input(Fore.YELLOW + "Enter the option(s) -4 or -6 for target(hostname), Press Enter for Autorun(target/hostname>ipv4) or if target(IPv4/IPv6) traceroute :"+  Style.RESET_ALL)
+                options = input(Fore.MAGENTA + "Enter the option(s) -4 or -6 for target(hostname), Press Enter for Autorun(target/hostname>ipv4) or if target(IPv4/IPv6) traceroute :")
 
                 if options == "-4":
                     print_help_trace()
-                    tr_options = input("Enter Traceroute options(Press Enter to skip):")
+                    tr_options = input(Fore.MAGENTA + "Enter Traceroute options(Press Enter to skip):")
                 elif options == "-6":
                     print_help_trace6()
-                    tr_options = input("Enter Traceroute options(Press Enter to skip):")
+                    tr_options = input(Fore.MAGENTA + "Enter Traceroute options(Press Enter to skip):")
                 else:
-                    tr_options = input("Enter Traceroute options(Press Enter to skip):")
+                    tr_options = input(Fore.MAGENTA + "Enter Traceroute options(Press Enter to skip):")
 
                 if validate_hostname(target):
                     if not options or '-4' in options:
@@ -769,55 +797,86 @@ def main():
                         table = parse_output_ipv6(output)
                         print(table)
                     else:
-                        print("Invalid options provided. ")
+                        print_message("error", f"Invalid options provided. ")
                 elif validate_ipv4(target):
                     if not options or '-4' in options:
                         output = run_traceroute(target, tr_options.split() + ['-a', '-e'])
                         table = parse_output_ipv4(output)
                         print(table)
                     else:
-                        print(Fore.RED + "Invalid options provided for IPv4 target."+  Style.RESET_ALL)
+                        print_message("error", f"Invalid options provided for IPv4 target.")
                 elif validate_ipv6(target):
                     if not options or '-6' in options:
                         output = run_traceroute6(target, tr_options.split() + ['-l'])
                         table = parse_output_ipv6(output)
                         print(table)
                     else:
-                        print("Invalid options provided for IPv6 target.")
+                        print_message("error", f"Invalid options provided for IPv6 target.")
                 else:
-                    print("Invalid target provided, please Run Again. ")
+                    print_message("error", f"Invalid target provided, please Run Again. ")
 
             elif choice == "4":
-                target = input("Enter the ip/hostname(s) to scan (if more than one, separated by spaces): ").split()
-                if not target:
-                    print("Please enter target IP/hostname to scan")
-                else:
-                    ports = input("Enter the port(s) to scan (separated by spaces): ").split()
-                    if not ports:
-                        ports = [21, 22, 25, 80, 53, 443, 445, 8080, 8443]
-                open_ports = check_open_ports(target, ports)
-                for port in open_ports:
-                    print("Open port:", port)
-                if ports:
-                    ports = list(map(int, ports))
+                targets = input(Fore.MAGENTA + "Enter the ip/hostname(s) to scan (if more than one, separated by spaces): ").split()
+                if not targets:
+                    print_message("info", f"Please enter target IP/hostname to scan")  
+                    input(Fore.MAGENTA + "Enter the ip/hostname(s) to scan (if more than one, separated by spaces): ").split()                   
+                for target in targets:
+                    if validate_hostname(target) or validate_ipv4(target) or validate_ipv6(target) == 'False':
+                        ports = input(Fore.MAGENTA + "Enter the port(s) to scan (separated by spaces): ").split()
+                        if not ports:
+                            ports = [21, 22, 25, 80, 53, 443, 445, 8080, 8443]
+                        open_ports = check_open_ports(target, ports)
+                        for port in open_ports:
+                            print("Open port:", port, "for target:" , target)
+                        if ports:
+                            ports = list(map(int, ports))
+                    else:
+                        print_message("info", f"Please enter target IP/hostname to scan")  
+                        input(Fore.MAGENTA + "Enter the ip/hostname(s) to scan (if more than one, separated by spaces): ").split()
+                        ports = input(Fore.MAGENTA + "Enter the port(s) to scan (separated by spaces): ").split()
+                        if not ports:
+                            ports = [21, 22, 25, 80, 53, 443, 445, 8080, 8443]
+                        open_ports = check_open_ports(target, ports)
+                        for port in open_ports:
+                            print("Open port:", port, "for target:" , target)
+                        if ports:
+                            ports = list(map(int, ports))
 
             elif choice == "5":
-                target = input("Enter the target IP/hostname: ")
-                ports_input = input("Enter the port(s) to scan (separated by spaces): ")
-                ports = list(map(int, ports_input.split())) if ports_input else None
-                open_ports = check_open_ports_nmap(target, ports)
-                print("Open ports:")
-                print_colored_table_ports(open_ports)
-            
+                targets = input(Fore.MAGENTA + "Enter the ip/hostname(s) to scan (if more than one, separated by spaces): ").split()
+                if not targets:
+                    print_message("info", f"Please enter target IP/hostname to scan")  
+                    input(Fore.MAGENTA + "Enter the ip/hostname(s) to scan (if more than one, separated by spaces): ").split()
+                for target in targets:
+                    if validate_hostname(target) or validate_ipv4(target) or validate_ipv6(target) == 'False':
+                        ports = input(Fore.MAGENTA + "Enter the port(s) to scan for target{target} (separated by spaces): ").split()
+                        if not ports:
+                            ports = [21, 22, 25, 80, 53, 443, 445, 8080, 8443]
+                            print_message("info",f"these ports : {ports} will be scanned for target:{target}")
+                            open_ports = check_open_ports_nmap(target, ports)
+                            print_message("info", f"Open ports for {target}:")
+                            print_colored_table_ports(open_ports)
+                        elif ports == "all":
+                            print_message("info",f"these ports : {ports} will be scanned for target:{target}")
+                            open_ports = check_open_ports_nmap(target,all)
+                            print_message("info", f"Open ports for {target}:")
+                            print_colored_table_ports(open_ports)
+                        else:
+                            print_message("info",f"these ports : {ports} will be scanned for target:{target}")
+                            open_ports = check_open_ports_nmap(target,ports)
+                            print_message("info", f"Open ports for {target}:")
+                            print_colored_table_ports(open_ports)
+                    else:
+                        break
             elif choice == "6":
                 print_help()
             
             elif choice == "0":
-                print("Goodbye!")
+                print_message("info", f"Goodbye!")
                 break
 
             else:
-                print("Invalid choice. Please try again.")
+                print_message("error", f"Invalid choice. Please try again.")
                 print_help()
     
     elif len(sys.argv) >= 2:
@@ -839,7 +898,7 @@ def main():
         
         elif option in ['-tw', '--traceroute_whois']:
             if len(sys.argv) < 3:
-                print("Enter the target to run traceroute and whois on ")
+                print_message("info", f"Enter the target to run traceroute and whois on ")
                 primt_help_tw()
                 return
             options = sys.argv[2:-1]
@@ -858,7 +917,7 @@ def main():
                     table = parse_output_ipv6(output)
                     print(table)
                 else:
-                    print("Invalid options provided.")
+                    print_message("error", f"Invalid options provided.")
                     primt_help_tw()
             elif validate_ipv4(target):
                 if not options or '-4' in options:
@@ -866,7 +925,7 @@ def main():
                     table = parse_output_ipv4(output)
                     print(table)
                 else:
-                    print("Invalid options provided for IPv4 target.")
+                    print_message("error", f"Invalid options provided for IPv4 target.")
                     print_help_trace()
             elif validate_ipv6(target):
                 if not options or '-6' in options:
@@ -874,16 +933,16 @@ def main():
                     table = parse_output_ipv6(output)
                     print(table)
                 else:
-                    print("Invalid options provided for IPv6 target.")
+                    print_message("error", f"Invalid options provided for IPv6 target.")
                     print_help_trace6()
             else:
-                print("Invalid target provided.")
+                print_message("error", f"Invalid target provided.")
                 primt_help_tw()
             pass
 
         elif option in ['-ps', '--portscan_scapy']:
             if len(sys.argv) < 3:
-                print("Enter the target to run traceroute and whois on ")
+                print_message("info", f"Enter the target to run traceroute and whois on ")
                 primt_help_ps()
                 return
             if len(sys.argv) == 3:
@@ -891,26 +950,26 @@ def main():
                 if validate_hostname(target) or validate_ipv4(target) or validate_ipv6(target):
                     ports = [21,22,25,80,53,443,445,8080,8443]
                     open_ports = check_open_ports(target, ports)
-                    print('The open ports on the destination host are:')
+                    print_message("info", f"The open ports on the destination host are:")
                     print_colored_table_ports(open_ports)
                 else:
-                    print(Fore.RED + "Please enter valid ip/hostname to scan" + Style.RESET_ALL)
+                    print_message("error", f"Please enter valid ip/hostname to scan")
                     primt_help_ps()
             if len(sys.argv) > 3:
                 target = sys.argv[-1]
                 if validate_hostname(target) or validate_ipv4(target) or validate_ipv6(target):
                     ports = sys.argv[2:-1]
                     open_ports = check_open_ports(target, ports)
-                    print('The open ports on the destination host are:')
+                    print_message("info", f"The open ports on the destination host are:")
                     print_colored_table_ports(open_ports)
                 else:
-                    print(Fore.RED + "Please enter valid ip/hostname to scan" + Style.RESET_ALL)
+                    print_message("error", f"Please enter valid ip/hostname to scan")
                     primt_help_ps()
             pass
 
         elif option in ['-pn', '--portscan_nmap']:
             if len(sys.argv) < 3:
-                print("Enter the target to scan port using namp on ")
+                print_message("info",  "Enter the target to scan port using namp on ")
                 primt_help_pn()
                 return
             if len(sys.argv) == 3:
@@ -918,26 +977,26 @@ def main():
                 ports = [21, 22, 25, 80, 53, 443, 445, 8080, 8443]
                 if validate_hostname(target) or validate_ipv4(target) or validate_ipv6(target):
                     open_ports = check_open_ports_nmap(target, ports)
-                    print('The open ports on the destination host are:')
+                    print_message("info", f"The open ports on the destination host are:")
                 else:
-                    print(Fore.RED + "Please enter valid ip/hostname to scan" + Style.RESET_ALL)
+                    print_message("error", f"Please enter valid ip/hostname to scan")
                     primt_help_pn()
             if len(sys.argv) > 3:
                 target = sys.argv[-1]
                 if validate_hostname(target) or validate_ipv4(target) or validate_ipv6(target):
                     ports = sys.argv[2:-1]
                     open_ports = check_open_ports_nmap(target, ports)
-                    print("Open ports:")
+                    print_message("info", f"Open ports:")
                     print_colored_table_ports(open_ports)
                 else:
-                    print(Fore.RED + "Please enter valid ip/hostname to scan" + Style.RESET_ALL)
+                    print_message("error", f"Please enter valid ip/hostname to scan")
                     primt_help_pn()
             pass
 
         elif option in ['-p', '--ping']:
             
             if len(sys.argv) < 3:
-                print("Enter the target to ping")
+                print_message("info", f"Enter the target to ping")
                 primt_help_p()
                 return
             elif len(sys.argv) == 3:
@@ -958,19 +1017,19 @@ def main():
                     elif '-6' in options:
                         ping_ipv6(target, p6_options.split())
                     else:
-                        print("Invalid options provided. ")
+                        print_message("error", f"Invalid options provided. ")
                 elif validate_ipv4(target):
                     if not options or '-4' in options:
                         ping_ipv4(target, p_options.split())
                     else:
-                        print("Invalid options provided for IPv4 target.")
+                        print_message("error","Invalid options provided for IPv4 target." )
                 elif validate_ipv6(target):
                     if not options or '-6' in options:
                         ping_ipv6(target, p6_options.split())
                     else:
-                        print("Invalid options provided for IPv6 target.")
+                        print_message("error","Invalid options provided for IPv6 target." )
                 else:
-                    print("Invalid target provided, please Run Again. ")
+                    print_message("error", f"Invalid target provided, please Run Again. ")
 
             pass    
 
@@ -978,11 +1037,11 @@ def main():
             print_help()
 
         else:
-            print("Invalid option.")
+            print_message("error", f"Invalid option.")
             print_help()
     
     else:
-        print("Invalid option, please check below")
+        print_message("error", f"Invalid option, please check below")
         print_help()       
 
 if __name__ == "__main__":
