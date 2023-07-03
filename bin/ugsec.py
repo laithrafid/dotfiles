@@ -65,6 +65,7 @@ System Daemons  /System/Library/LaunchDaemons   root or the user specified with 
 
 '''
 import os
+import re
 import pwd
 import grp
 import platform
@@ -491,9 +492,21 @@ def print_horizontal_user_table(user_info):
         colored_value = colorize_column(value, True, color_list.pop(0))
         print_message("error", f"{colored_key}: {colored_value}")
 
-def print_user_table(data, condition_func=None, truncate=True):
-    table = display_user_table(data, condition_func, truncate)
+def print_user_table(arguments):
+    if "all" in arguments or not arguments: 
+        data = get_user_info([])
+    elif "system" in arguments:
+        pattern = r'^_.*'  # Regular expression pattern to match user names starting with underscore
+        matching_usernames = [user.pw_name for user in pwd.getpwall() if re.match(pattern, user.pw_name)]
+        data = get_user_info(matching_usernames)
+    elif "other" in arguments:
+        pattern = r'^[^_].*'  # Regular expression pattern to match user names starting with underscore
+        matching_usernames = [user.pw_name for user in pwd.getpwall() if re.match(pattern, user.pw_name)]
+        data = get_user_info(matching_usernames)
+    table = display_user_table(data, condition_func=lambda shell: shell != "/usr/bin/false", truncate=True)
+    total_users = len(data)
     print(table)
+    print_message("info", f"Total number of users: {total_users}")    
 
 def print_group_table():
     group_info = get_group_info()
@@ -617,6 +630,14 @@ def print_message(message_type,message):
     # Print the message with the corresponding color
     print(f"{color_code}{message}{Style.RESET_ALL}")
 
+def print_help_ut():
+    print(Fore.MAGENTA + "Usage:" + Style.RESET_ALL + " python ugsec.py -ut, --users-table " + Fore.CYAN + "[Arguments]" + Style.RESET_ALL +"\n")
+    print(Fore.CYAN + "Arguments:" + Style.RESET_ALL)
+    print(" all    : for all Users in OS")
+    print(" system : for all System users in OS ")
+    print(" other  : for all non system users in os")
+    pass
+
 #################### User and Group Management Functions:
 
 def add_user(username):
@@ -624,21 +645,21 @@ def add_user(username):
 
     # Prompt for additional options
     while True:
-        option = input(Fore.MAGENTA + "Enter additional option (e.g., -c comment, -s shell) or press Enter to skip: ")
+        option = input(Fore.MAGENTA + "Enter additional option (e.g., -c comment, -s shell) or press Enter to skip: " + Style.RESET_ALL)
         if option:
             additional_options.append(option)
         else:
             break
 
     # Prompt for the group to add the user to
-    groupname = input(Fore.MAGENTA + "Enter the group to add the user to: ")
+    groupname = input(Fore.MAGENTA + "Enter the group to add the user to: " + Style.RESET_ALL)
 
     # Prompt for the home directory (optional)
-    homedir = input(Fore.MAGENTA + "Enter the home directory for the user (press Enter to skip): ")
+    homedir = input(Fore.MAGENTA + "Enter the home directory for the user (press Enter to skip): " + Style.RESET_ALL)
     homedir_option = ["NFSHomeDirectory", homedir] if homedir else []
 
     # Prompt for the password (optional)
-    password = getpass.getpass(input(Fore.MAGENTA + "Enter the password for the user (press Enter to skip): "))
+    password = getpass.getpass(input(Fore.MAGENTA + "Enter the password for the user (press Enter to skip): " + Style.RESET_ALL))
     password_option = ["Password", password] if password else []
 
     try:
@@ -667,22 +688,22 @@ def add_group(groupname):
         print_message("info", f"Group '{groupname}' added successfully.")
 
         # Prompt for comment option
-        comment = input(Fore.MAGENTA + "Enter the comment for the group (press Enter to skip): ")
+        comment = input(Fore.MAGENTA + "Enter the comment for the group (press Enter to skip): " + Style.RESET_ALL)
         if comment:
             subprocess.check_call(["sudo", "dscl", ".", "-append", f"/Groups/{groupname}", "Comment", comment])
 
         # Prompt for password option
-        password = input(Fore.MAGENTA + "Enter the password for the group (press Enter to skip): ")
+        password = input(Fore.MAGENTA + "Enter the password for the group (press Enter to skip): " + Style.RESET_ALL)
         if password:
             subprocess.check_call(["sudo", "dscl", ".", "-append", f"/Groups/{groupname}", "Password", password])
 
         # Prompt for realname option
-        realname = input(Fore.MAGENTA + "Enter the real name for the group (press Enter to skip): ")
+        realname = input(Fore.MAGENTA + "Enter the real name for the group (press Enter to skip): " + Style.RESET_ALL)
         if realname:
             subprocess.check_call(["sudo", "dscl", ".", "-append", f"/Groups/{groupname}", "RealName", realname])
 
         # Prompt for users to add to membership
-        users = input(Fore.MAGENTA + "Enter the username(s) to add to the group membership (separated by spaces), or press Enter to skip: ")
+        users = input(Fore.MAGENTA + "Enter the username(s) to add to the group membership (separated by spaces), or press Enter to skip: " + Style.RESET_ALL)
         if users:
             users = users.split()
             for user in users:
@@ -845,7 +866,7 @@ def main():
         print_message("error", f"No option provided.")
         print_help()
         return
-        
+
     if len(sys.argv) > 1 and (sys.argv[1] == "-i" or sys.argv[1] == "--interactive"):
         while True:
             print_message("info", f"\n======================================================")
@@ -862,46 +883,59 @@ def main():
             print("  8. Add Group")
             print("  9. Help")
             print("  0. Quit")
-            choice = input(Fore.MAGENTA + "Enter your choice:")
+            pass
+            choice = input(Fore.MAGENTA + "Enter your choice:" + Style.RESET_ALL)
             if choice == "1":
-                print_message("info", f"User Information:")
-                user_info = get_user_info([])
-                print_user_table(user_info, condition_func=lambda shell: shell != "/usr/bin/false", truncate=True)
-                total_users = len(user_info)
-                print_message("info", f"Total number of users: {total_users}")
+                while True:
+                    print("1. all    : for all Users in OS")
+                    print("2. system : for all System users in OS ")
+                    print("3. other  : for all non system users in os")
+                    print("0. quit   : go back to main menu")
+                    users_choice = input(Fore.MAGENTA + "enter your choice (enter to skip for all users):" + Style.RESET_ALL)
+                    if users_choice  == "1" or  users_choice == "all" or users_choice == "":
+                        print_user_table("all")
+                    elif users_choice == "2" or users_choice == "system":
+                        print_user_table("system")
+                    elif users_choice == "3" or users_choice == "other":
+                        print_user_table("other")
+                    elif users_choice == "0" or users_choice == "Quit":
+                        break
+                    else:
+                        print_message("error", "please enter a valid argument")
+                        break                    
 
             elif choice == "2":
                 print_group_table()
 
             elif choice == "3":
-                usernames = input(Fore.MAGENTA + "Enter the username(s) to delete (separated by spaces): ").split()
+                usernames = input(Fore.MAGENTA + "Enter the username(s) to delete (separated by spaces): " + Style.RESET_ALL).split()
                 delete_users(usernames)
 
             elif choice == "4":
-                groupnames = input(Fore.MAGENTA + "Enter the group name(s) to delete (separated by spaces): ").split()
+                groupnames = input(Fore.MAGENTA + "Enter the group name(s) to delete (separated by spaces): " + Style.RESET_ALL).split()
                 delete_groups(groupnames)
 
             elif choice == "5":
-                username = input(Fore.MAGENTA + "Enter the username: ").strip(" ")
+                username = input(Fore.MAGENTA + "Enter the username: " + Style.RESET_ALL).strip(" ")
                 get_user_info_by_username(username)
 
             elif choice == "6":
-                groupname = input(Fore.MAGENTA + "Enter the group name: ").strip(" ")
+                groupname = input(Fore.MAGENTA + "Enter the group name: " + Style.RESET_ALL).strip(" ")
                 get_group_info_by_groupname(groupname)
 
             elif choice == "7":
-                username = input(Fore.MAGENTA + "Enter the username to add: ")
+                username = input(Fore.MAGENTA + "Enter the username to add: " + Style.RESET_ALL)
                 add_user(username)
 
             elif choice == "8":
-                groupname = input(Fore.MAGENTA + "Enter the group name to add: ")
+                groupname = input(Fore.MAGENTA + "Enter the group name to add: " + Style.RESET_ALL)
                 add_group(groupname)
 
             elif choice == "9":
                 print_help()
 
             elif choice == "10":
-                groupname = input(Fore.MAGENTA + "Enter the group name to delete users memberships: ")
+                groupname = input(Fore.MAGENTA + "Enter the group name to delete users memberships: " + Style.RESET_ALL)
                 delete_user_memberships(groupname)
 
             elif choice == "0":
@@ -913,13 +947,16 @@ def main():
 
     elif len(sys.argv) >= 2:
         option = sys.argv[1]
+        arguments = sys.argv[2:]
         if option in ['-ut', '--users-table']:
-            print_message("info", f"User Information:")
-            user_info = get_user_info([])
-            print_user_table(user_info, condition_func=lambda shell: shell != "/usr/bin/false", truncate=True)
-            total_users = len(user_info)
-            print_message("info", f"Total number of users: {total_users}")
-        
+            if "-h" in arguments:
+                print_help_ut()
+            elif "all" in arguments or "system" in arguments or "other" in arguments or not arguments:
+                print_user_table(arguments)
+            else:
+                print_message("error", "please enter a valid argument")
+                print_help_ut()
+            
         elif option in ['-gt', '--group-table']:
             print_group_table()
         
