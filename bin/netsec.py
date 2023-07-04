@@ -473,8 +473,6 @@ def check_open_ports(target, ports):
         print_message("error",f"{progress}/{len(ports)} ports scanned...end=\r")
     return open_ports
 
-import nmap
-
 def check_open_ports_nmap(target, ports=None):
     nm = nmap.PortScanner()
 
@@ -495,7 +493,6 @@ def check_open_ports_nmap(target, ports=None):
                 break
 
     return open_ports
-
 
 
 

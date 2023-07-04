@@ -89,12 +89,11 @@ def print_help():
     print(Fore.CYAN + "Options:"+ Style.RESET_ALL +"\n")
     print("  -i, --interactive      Run the script in interactive mode")
     print("  -ut, --users-table      Print the table of all users")
-    print("  -ud, --users_discovery  print users who are Administrators and more")
     print("  -gt, --group-table      Print the table of all groups")
     print("  -du, --delete-users     Delete user(s) specified by username(s)")
     print("  -dg, --delete-groups    Delete group(s) specified by group name(s)")
     print("  -gu, --get-user-info    Get detailed information about a specific user")
-    print("  -gp, --get-plists       Get all plists in osx ")
+    print("  -gs, --get-startups       Get all plists in osx ")
     print("  -gg, --get-group-info   Get detailed information about a specific group")
     print("  -au, --add-user         Add a new user with the specified username")
     print("  -ag, --add-group        Add a new group with the specified group name")
@@ -128,27 +127,85 @@ def list_config_files(directory):
 #################### Information Retrieval Functions:
 
 def get_user_info(usernames=None):
+    operating_system = platform.system()
+
     user_info = []
     processed_users = set()
-    for user in pwd.getpwall():
-        if user.pw_name in processed_users:
-            continue
-        if usernames and user.pw_name not in usernames:
-            continue
-        user_entry = {
-            "Name": user.pw_name,
-            "PID": get_user_pid(user.pw_name),  # Add the PID field
-            "Password": user.pw_passwd,
-            "UID": user.pw_uid,
-            "GID": user.pw_gid,
-            "Directory": user.pw_dir,
-            "Shell": user.pw_shell,
-            "GECOS": user.pw_gecos,
-            "Groups": get_user_groups(user.pw_name),
-            "Last Used": get_last_used(user.pw_name)
-        }
-        user_info.append(user_entry)
-        processed_users.add(user.pw_name)
+
+    if operating_system == "Windows":
+        # Windows logic
+        for user in pwd.getpwall():
+            if user.pw_name in processed_users:
+                continue
+            if usernames and user.pw_name not in usernames:
+                continue
+            user_entry = {
+                "Name": user.pw_name,
+                "PID": get_user_pid(user.pw_name),  # Add the PID field
+                "Password": user.pw_passwd,
+                "UID": user.pw_uid,
+                "GID": user.pw_gid,
+                "Directory": user.pw_dir,
+                "Shell": user.pw_shell,
+                "GECOS": user.pw_gecos,
+                "Groups": get_user_groups(user.pw_name),
+                "Last Used": get_last_used(user.pw_name)
+            }
+            user_info.append(user_entry)
+            processed_users.add(user.pw_name)
+
+    elif operating_system == "Linux":
+        # Linux logic
+        for user in pwd.getpwall():
+            if user.pw_name in processed_users:
+                continue
+            if usernames and user.pw_name not in usernames:
+                continue
+            try:
+                spwd_entry = spwd.getspnam(user.pw_name)
+                last_used_timestamp = spwd_entry.sp_lstchg * 86400  # Convert to seconds
+                last_used_datetime = datetime.datetime.fromtimestamp(last_used_timestamp)
+                last_used_str = last_used_datetime.strftime("%Y-%m-%d %H:%M:%S")
+            except KeyError:
+                last_used_str = "N/A"
+
+            user_entry = {
+                "Name": user.pw_name,
+                "PID": get_user_pid(user.pw_name),  # Add the PID field
+                "Password": user.pw_passwd,
+                "UID": user.pw_uid,
+                "GID": user.pw_gid,
+                "Directory": user.pw_dir,
+                "Shell": user.pw_shell,
+                "GECOS": user.pw_gecos,
+                "Groups": get_user_groups(user.pw_name),
+                "Last Used": last_used_str
+            }
+            user_info.append(user_entry)
+            processed_users.add(user.pw_name)
+
+    elif operating_system == "Darwin":
+        # macOS (Darwin) logic
+        for user in pwd.getpwall():
+            if user.pw_name in processed_users:
+                continue
+            if usernames and user.pw_name not in usernames:
+                continue
+            user_entry = {
+                "Name": user.pw_name,
+                "PID": get_user_pid(user.pw_name),  # Add the PID field
+                "Password": user.pw_passwd,
+                "UID": user.pw_uid,
+                "GID": user.pw_gid,
+                "Directory": user.pw_dir,
+                "Shell": user.pw_shell,
+                "GECOS": user.pw_gecos,
+                "Groups": get_user_groups(user.pw_name),
+                "Last Used": get_last_used(user.pw_name)
+            }
+            user_info.append(user_entry)
+            processed_users.add(user.pw_name)
+
     return user_info
 
 def get_admin_accounts():
@@ -169,36 +226,96 @@ def get_admin_accounts():
 
     return admins
 
-def get_group_info():
-    try:
-        command = "dscl . -list /Groups"
-        output = subprocess.check_output(command, shell=True, text=True)
-        groups = output.strip().split("\n")
+def get_group_info(group_names=None):
+    operating_system = platform.system()
 
-        group_info = []
-        for i, group in enumerate(groups, start=1):
-            group_entry = {
-                "Group Name": group,
-                "Users": "",
-                "Comment": ""
-            }
-            group_info.append(group_entry)
-        
-        for group_entry in group_info:
-            group = group_entry["Group Name"]
-            group_info_output = subprocess.check_output(f"dscl . -read /Groups/{group}", shell=True, text=True)
-            lines = group_info_output.split("\n")
-            for j, line in enumerate(lines):
-                if "GroupMembership:" in line:
-                    group_entry["Users"] = line.split(":")[1].strip()
-                elif "Comment:" in line and j < len(lines) - 1:
-                    group_entry["Comment"] = lines[j + 1].strip()
+    if operating_system == "Windows":
+        # Windows logic placeholder
+        try:
+            command = "net localgroup"
+            output = subprocess.check_output(command, shell=True, text=True)
+            lines = output.strip().split("\n")
 
-        return group_info
+            group_info = []
+            for line in lines:
+                if line.startswith("-------------------------------------------------------------------------------"):
+                    continue
+                if line.startswith("The command completed"):
+                    break
+                group_entry = {
+                    "Group Name": line.strip(),
+                    "Users": "",
+                    "Comment": ""
+                }
+                group_info.append(group_entry)
 
-    except subprocess.CalledProcessError:
-        print_message("error", f"Failed to retrieve group information.")
-        return []
+            return group_info
+        except subprocess.CalledProcessError:
+            return []
+    elif operating_system == "Linux":
+        # Linux logic
+        try:
+            command = "cat /etc/group"
+            output = subprocess.check_output(command, shell=True, text=True)
+            lines = output.strip().split("\n")
+
+            group_info = []
+            for line in lines:
+                parts = line.split(":")
+                group_name = parts[0]
+                users = parts[3].split(",") if len(parts) >= 4 else []
+                comment = parts[4] if len(parts) >= 5 else ""
+
+                if group_names and group_name not in group_names:
+                    continue
+
+                group_entry = {
+                    "Group Name": group_name,
+                    "Users": users,
+                    "Comment": comment
+                }
+                group_info.append(group_entry)
+
+            return group_info
+        except subprocess.CalledProcessError:
+            return []
+    elif operating_system == "Darwin":
+        # macOS (Darwin) logic
+        try:
+            command = "dscl . -list /Groups"
+            output = subprocess.check_output(command, shell=True, text=True)
+            groups = output.strip().split("\n")
+
+            group_info = []
+            for group in groups:
+                if group_names and group not in group_names:
+                    continue
+
+                group_entry = {
+                    "Group Name": group,
+                    "Users": "",
+                    "Comment": ""
+                }
+
+                group_info_output = subprocess.check_output(f"dscl . -read /Groups/{group}", shell=True, text=True)
+                lines = group_info_output.split("\n")
+                for line in lines:
+                    if "GroupMembership:" in line:
+                        group_entry["Users"] = line.split(":")[1].strip()
+                    elif "Comment:" in line:
+                        comment_index = lines.index(line) + 1
+                        if comment_index < len(lines):
+                            group_entry["Comment"] = lines[comment_index].strip()
+                        break
+
+                group_info.append(group_entry)
+
+            return group_info
+
+        except subprocess.CalledProcessError:
+            return []
+    else:
+        return []  # Unsupported operating system
 
 def get_user_groups(username):
     groups = []
@@ -208,16 +325,66 @@ def get_user_groups(username):
     return ", ".join(groups)
 
 def get_user_pid(username):
-    try:
-        command = f"pgrep -u {username}"
-        output = subprocess.check_output(command, shell=True, text=True)
-        pids = output.strip().split("\n")
-        return ", ".join(pids)
-    except subprocess.CalledProcessError:
-        return "N/A"
+    operating_system = platform.system()
+
+    if operating_system == "Windows":
+        # Windows logic
+        try:
+            command = f"tasklist /FI \"USERNAME eq {username}\" /NH /FO CSV"
+            output = subprocess.check_output(command, shell=True, text=True)
+            lines = output.strip().split("\n")
+            pids = []
+            for line in lines:
+                pid = line.split(",")[1].strip('"')
+                pids.append(pid)
+            return ", ".join(pids)
+        except subprocess.CalledProcessError:
+            return "N/A"
+    elif operating_system == "Linux":
+        # Linux logic
+        try:
+            command = f"pgrep -u {username}"
+            output = subprocess.check_output(command, shell=True, text=True)
+            pids = output.strip().split("\n")
+            return ", ".join(pids)
+        except subprocess.CalledProcessError:
+            return "N/A"
+    elif operating_system == "Darwin":
+        # macOS (Darwin) logic
+        try:
+            command = f"pgrep -U {username}"
+            output = subprocess.check_output(command, shell=True, text=True)
+            pids = output.strip().split("\n")
+            return ", ".join(pids)
+        except subprocess.CalledProcessError:
+            return "N/A"
+    else:
+        return "N/A"  # Unsupported operating system
 
 def get_last_used(username):
-    if platform.system() == "Darwin":  # macOS
+    operating_system = platform.system()
+
+    if operating_system == "Windows":
+        try:
+            command = f"net user {username}"
+            output = subprocess.check_output(command, shell=True, text=True)
+            lines = output.strip().split("\n")
+            for line in lines:
+                if line.startswith("Last logon"):
+                    last_login_str = line.split(":")[1].strip()
+                    return last_login_str
+            return "N/A"  # Last logon information not found
+        except subprocess.CalledProcessError:
+            return "N/A"
+    elif operating_system == "Linux":
+        try:
+            spwd_entry = pwd.getspnam(username)
+            last_used_timestamp = spwd_entry.sp_lstchg * 86400  # Convert to seconds
+            last_used_datetime = datetime.datetime.fromtimestamp(last_used_timestamp)
+            return last_used_datetime.strftime("%Y-%m-%d %H:%M:%S")
+        except KeyError:
+            return "N/A"
+    elif operating_system == "Darwin":
         try:
             command = f"last | grep {username} | head -n 1"
             output = subprocess.check_output(command, shell=True, text=True)
@@ -228,17 +395,24 @@ def get_last_used(username):
         except subprocess.CalledProcessError:
             return "N/A"
     else:
-        try:
-            spwd_entry = pwd.getspnam(username)
-            last_used_timestamp = spwd_entry.sp_lstchg * 86400  # Convert to seconds
-            last_used_datetime = datetime.datetime.fromtimestamp(last_used_timestamp)
-            return last_used_datetime.strftime("%Y-%m-%d %H:%M:%S")
-        except KeyError:
-            return "N/A"
+        return "N/A"  # Unsupported operating system
 
 def get_network_services_udp(username):
+    operating_system = platform.system()
+
+    if operating_system == "Windows":
+        # Windows logic
+        command = f"netstat -ano -p udp -n | findstr LISTENING | findstr {username}"
+    elif operating_system == "Linux":
+        # Linux logic
+        command = f"sudo lsof -iUDP +c0 -a -nP -u {username}"
+    elif operating_system == "Darwin":
+        # macOS (Darwin) logic
+        command = f"sudo lsof -iUDP +c0 -a -nP -u {username}"
+    else:
+        return []  # Unsupported operating system
+
     try:
-        command = f"sudo lsof -iUDP +c0 -a  -nP -u {username}"
         output = subprocess.check_output(command, shell=True, text=True)
         lines = output.strip().split("\n")
         services = []
@@ -259,8 +433,21 @@ def get_network_services_udp(username):
         return []
 
 def get_network_services_tcp(username):
+    operating_system = platform.system()
+
+    if operating_system == "Windows":
+        # Windows logic
+        command = f"netstat -ano -p tcp -n | findstr LISTENING | findstr {username}"
+    elif operating_system == "Linux":
+        # Linux logic
+        command = f"sudo lsof -iTCP +c0 -a -nP -u {username}"
+    elif operating_system == "Darwin":
+        # macOS (Darwin) logic
+        command = f"sudo lsof -iTCP +c0 -a -nP -u {username}"
+    else:
+        return []  # Unsupported operating system
+
     try:
-        command = f"sudo lsof -iTCP +c0 -a  -nP -u {username}"
         output = subprocess.check_output(command, shell=True, text=True)
         lines = output.strip().split("\n")
         services = []
@@ -281,9 +468,23 @@ def get_network_services_tcp(username):
         return []
 
 def get_open_files(username, pid_filter=None):
-    command = f"sudo lsof -a -l -n +c0 -u{username}"
+    operating_system = platform.system()
+
+    if operating_system == "Windows":
+        # Windows logic
+        command = f"lsof -a -l -n -u {username}"
+    elif operating_system == "Linux":
+        # Linux logic
+        command = f"sudo lsof -a -l -n +c0 -u {username}"
+    elif operating_system == "Darwin":
+        # macOS (Darwin) logic
+        command = f"sudo lsof -a -l -n -u {username}"
+    else:
+        return []  # Unsupported operating system
+
     if pid_filter:
         command += f" -p {pid_filter}"
+    
     try:
         output = subprocess.check_output(command, shell=True, text=True)
         lines = output.strip().split("\n")
@@ -309,14 +510,41 @@ def get_open_files(username, pid_filter=None):
         return []  # Command execution failed, return empty list
 
 def get_group_members(groupname):
-    try:
-        output = subprocess.check_output(["dscl", ".", "-read", f"/Groups/{groupname}", "GroupMembership"])
-        members_line = output.decode().strip()
-        if members_line.startswith("GroupMembership:"):
-            members = members_line.replace("GroupMembership:", "").strip().split()
-            return members
-    except subprocess.CalledProcessError:
-        pass
+    system = platform.system()
+    
+    if system == "Darwin":
+        try:
+            output = subprocess.check_output(["dscl", ".", "-read", f"/Groups/{groupname}", "GroupMembership"])
+            members_line = output.decode().strip()
+            if members_line.startswith("GroupMembership:"):
+                members = members_line.replace("GroupMembership:", "").strip().split()
+                return members
+        except subprocess.CalledProcessError:
+            pass
+    
+    elif system == "Windows":
+        try:
+            output = subprocess.check_output(["net", "localgroup", groupname])
+            members_line = output.decode().strip()
+            members_start = members_line.find("----------") + len("----------")
+            members_end = members_line.find("The command completed successfully.")
+            if members_start != -1 and members_end != -1:
+                members = members_line[members_start:members_end].strip().split()
+                return members
+        except subprocess.CalledProcessError:
+            pass
+    
+    elif system == "Linux":
+        try:
+            output = subprocess.check_output(["getent", "group", groupname])
+            members_line = output.decode().strip()
+            members_start = members_line.find(":") + 1
+            if members_start != -1:
+                members = members_line[members_start:].strip().split(",")
+                return members
+        except subprocess.CalledProcessError:
+            pass
+    
     return []
 
 def get_launchctl_manager_info():
@@ -336,51 +564,104 @@ def get_launchctl_manager_info():
         return None
 
 def get_process_info(process):
-    try:
-        managerpid, manageruid, _ = get_launchctl_manager_info()
-        gui_command = ['launchctl', 'print', f'gui/{manageruid}/{process}']
-        system_command = ['launchctl', 'print', f'system/{process}']
+    system = platform.system().lower()
+    
+    if system == "darwin":
+        try:
+            managerpid, manageruid, _ = get_launchctl_manager_info()
+            gui_command = ['launchctl', 'print', f'gui/{manageruid}/{process}']
+            system_command = ['launchctl', 'print', f'system/{process}']
 
-        # Run the GUI command and get the result
-        gui_result = subprocess.run(gui_command, capture_output=True, text=True)
-        gui_output_lines = gui_result.stdout.strip().split('\n')
+            # Run the GUI command and get the result
+            gui_result = subprocess.run(gui_command, capture_output=True, text=True)
+            gui_output_lines = gui_result.stdout.strip().split('\n')
 
-        pid = ""
-        state = ""
-        domain = ""
+            pid = ""
+            state = ""
+            domain = ""
 
-        for line in gui_output_lines:
-            if 'pid =' in line or 'PID =' in line:
-                pid = line.split('=', 1)[1].strip()
-            elif 'state =' in line:
-                state = line.split('=', 1)[1].strip()
-            elif 'domain =' in line:
-                domain = line.split('=', 1)[1].strip()
+            for line in gui_output_lines:
+                if 'pid =' in line or 'PID =' in line:
+                    pid = line.split('=', 1)[1].strip()
+                elif 'state =' in line:
+                    state = line.split('=', 1)[1].strip()
+                elif 'domain =' in line:
+                    domain = line.split('=', 1)[1].strip()
 
-        # If PID is found from the GUI command, return the result
-        if state:
+            # If PID is found from the GUI command, return the result
+            if state:
+                return pid, state, domain
+
+            # Run the system command and get the result
+            system_result = subprocess.run(system_command, capture_output=True, text=True)
+            system_output_lines = system_result.stdout.strip().split('\n')
+
+            pid = ""
+            state = ""
+            domain = ""
+
+            for line in system_output_lines:
+                if 'pid =' in line or 'PID =' in line:
+                    pid = line.split('=', 1)[1].strip()
+                elif 'state =' in line:
+                    state = line.split('=', 1)[1].strip()
+                elif 'domain =' in line:
+                    domain = line.split('=', 1)[1].strip()
+
             return pid, state, domain
 
-        # Run the system command and get the result
-        system_result = subprocess.run(system_command, capture_output=True, text=True)
-        system_output_lines = system_result.stdout.strip().split('\n')
+        except subprocess.CalledProcessError as e:
+            print_message("error", f"Error running launchctl print for process {process}: {e.stderr}")
+            return "", "", ""
+    
+    elif system == "linux":
+        try:
+            command = ['ps', '-C', process, '-o', 'pid=', '-o', 'state=']
+            result = subprocess.run(command, capture_output=True, text=True)
+            output_lines = result.stdout.strip().split('\n')
 
-        pid = ""
-        state = ""
-        domain = ""
+            pid = ""
+            state = ""
+            domain = ""
 
-        for line in system_output_lines:
-            if 'pid =' in line or 'PID =' in line:
-                pid = line.split('=', 1)[1].strip()
-            elif 'state =' in line:
-                state = line.split('=', 1)[1].strip()
-            elif 'domain =' in line:
-                domain = line.split('=', 1)[1].strip()
+            if len(output_lines) >= 1:
+                pid = output_lines[0].strip().split()[0]
+                state = output_lines[0].strip().split()[1]
 
-        return pid, state, domain
+            return pid, statem, domain
 
-    except subprocess.CalledProcessError as e:
-        print_message("error", f"Error running launchctl print for process {process}: {e.stderr}")
+        except subprocess.CalledProcessError as e:
+            print_message("error", f"Error running ps command for process {process}: {e.stderr}")
+            return "", ""
+    
+    elif system == "windows":
+        try:
+            command = ['tasklist', '/fi', f'imagename eq {process}']
+            result = subprocess.run(command, capture_output=True, text=True)
+            output_lines = result.stdout.strip().split('\n')
+
+            pid = ""
+            state = ""
+            domain = ""
+            
+            if len(output_lines) >= 2:
+                # Skip the header line
+                process_info = output_lines[1]
+
+                # Split the process info into columns
+                columns = process_info.split()
+                if len(columns) >= 2:
+                    pid = columns[1]
+                    state = "Running"  # Windows tasklist only shows running processes
+
+            return pid, statem, domain
+
+        except subprocess.CalledProcessError as e:
+            print_message("error", f"Error running tasklist for process {process}: {e.stderr}")
+            return "", ""
+    
+    else:
+        print_message("error", f"Unsupported platform: {system}")
         return "", "", ""
 
 def get_plist_info(plist_path):
@@ -394,6 +675,73 @@ def get_plist_info(plist_path):
         print_message("error", f"Error message: {str(e)}")
         return None
 
+def get_startup_programs():
+    startup_programs = []
+
+    system = platform.system()
+
+    if system == "Windows":
+        try:
+            import winreg
+
+            reg_path = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, reg_path) as reg_key:
+                num_entries = winreg.QueryInfoKey(reg_key)[0]
+                for i in range(num_entries):
+                    value_name, value_data, _ = winreg.EnumValue(reg_key, i)
+                    startup_programs.append({"Name": value_name, "Path": value_data})
+        except ImportError:
+            pass
+
+    elif system == "Linux":
+        # Check autostart directories
+        autostart_dirs = [
+            os.path.expanduser("~/.config/autostart"),
+            "/etc/xdg/autostart"
+        ]
+
+        for autostart_dir in autostart_dirs:
+            if os.path.isdir(autostart_dir):
+                for file_name in os.listdir(autostart_dir):
+                    file_path = os.path.join(autostart_dir, file_name)
+                    if os.path.isfile(file_path) and file_name.endswith(".desktop"):
+                        with open(file_path, "r") as file:
+                            for line in file:
+                                if line.startswith("Exec="):
+                                    program_name = line[5:].strip()
+                                    startup_programs.append({"Name": file_name, "Path": program_name})
+                                    break
+
+        # Check cron jobs
+        try:
+            output = subprocess.check_output("crontab -l", shell=True, text=True)
+            lines = output.strip().split("\n")
+            for line in lines:
+                if not line.startswith("#"):
+                    cron_job = line.split(" ", maxsplit=5)
+                    program_name = cron_job[-1]
+                    startup_programs.append({"Name": "Cron Job", "Path": program_name})
+        except subprocess.CalledProcessError:
+            pass
+
+    elif system == "Darwin":
+        # Check autostart directories
+        colored_table = print_plist_table()
+        print(colored_table)
+
+        # Check cron jobs
+        try:
+            output = subprocess.check_output("crontab -l", shell=True, text=True)
+            lines = output.strip().split("\n")
+            for line in lines:
+                if not line.startswith("#"):
+                    cron_job = line.split(" ", maxsplit=5)
+                    program_name = cron_job[-1]
+                    startup_programs.append({"Name": "Cron Job", "Path": program_name})
+        except subprocess.CalledProcessError:
+            pass
+
+    return startup_programs
 
 #################### Display Functions:
 
@@ -435,23 +783,6 @@ def display_user_table(data, condition_func=None , truncate=True):
     table.align = "l"
     table.max_width = 100
     return table
-
-def display_group_table(group_info):
-    group_table = PrettyTable(["#", "Group Name", "Users","Comment"])
-    group_table.align = "l"
-
-    for i, group_entry in enumerate(group_info, start=1):
-        colored_group = colorize_column(group_entry["Group Name"], True, Fore.YELLOW)
-        colored_users = colorize_column(group_entry["Users"], True, Fore.GREEN)
-        colored_comment = colorize_column(group_entry["Comment"], True, Fore.CYAN)
-        colored_raw = colorize_column(i, True, Fore.RED)
-        group_table.add_row([colored_raw, colored_group, colored_users, colored_comment])
-
-    print_message("info", f"Group Information:")
-    print(group_table)
-
-    total_groups = len(group_info)
-    print_message("info", f"Total number of groups: {total_groups}")
 
 def display_network_services(services, protocol):
     if not services:
@@ -508,9 +839,37 @@ def print_user_table(arguments):
     print(table)
     print_message("info", f"Total number of users: {total_users}")    
 
-def print_group_table():
-    group_info = get_group_info()
-    display_group_table(group_info)
+def print_group_table(arguments):
+    if "all" in arguments or not arguments:
+        group_info = get_group_info()
+    elif "system" in arguments:
+        pattern = r'^_.*'
+        matching_groups = [group["Group Name"] for group in get_group_info() if re.match(pattern, group["Group Name"])]
+        group_info = get_group_info(group_names=matching_groups)
+    elif "other" in arguments:
+        pattern = r'^[^_].*'
+        matching_groups = [group["Group Name"] for group in get_group_info() if re.match(pattern, group["Group Name"])]
+        group_info = get_group_info(group_names=matching_groups)
+    else:
+        print("Invalid argument.")
+        return
+
+    if group_info:
+        group_table = PrettyTable(["#", "Group Name", "Users", "Comment"])
+        group_table.align = "l"
+
+        for i, group_entry in enumerate(group_info, start=1):
+            colored_group = f"{Fore.YELLOW}{group_entry['Group Name']}{Fore.RESET}"
+            colored_users = f"{Fore.GREEN}{group_entry['Users']}{Fore.RESET}"
+            colored_comment = f"{Fore.CYAN}{group_entry['Comment']}{Fore.RESET}"
+            colored_index = f"{Fore.RED}{i}{Fore.RESET}"
+            group_table.add_row([colored_index, colored_group, colored_users, colored_comment])
+
+        print("Group Information:")
+        print(group_table)
+
+        total_groups = len(group_info)
+        print_message("info",f"Total number of groups: {total_groups}")
 
 def print_group_info(group_info):
     if not group_info:
@@ -529,6 +888,21 @@ def print_group_info(group_info):
         table.add_row([colored_key, colored_value])
 
     print(table)
+
+def print_admin_accounts():
+    admins = get_admin_accounts()
+    colored_admins = colorize_column(", ".join(admins), True, Fore.RED)
+    print("administrators accounts:", colored_admins)
+    prompt = "Do you want more information about the administrators? (y/n) (Press Enter to skip): "
+    more_info = input(Fore.MAGENTA +  prompt + Style.RESET_ALL)
+    if more_info.lower() == 'y':
+        # Prompt for usernames
+        get_user_info_by_username(admins)
+        print_password_policy()
+    elif more_info.lower() == 'n' or more_info.lower() == '':
+        print_message("info", "No more information about the administrators needed")
+    else: 
+        print_message("error", "Invalid answer")
 
 def print_open_files(open_files):
     if not open_files:
@@ -557,12 +931,20 @@ def print_open_files(open_files):
         print(table)
 
 def print_password_policy():
-    if platform.system() == "Windows":
-        os.system("net accounts")
-    elif platform.system() == "Linux":
-        os.system("sudo grep '^PASS_MAX_DAYS\|^PASS_MIN_DAYS\|^PASS_WARN_AGE' /etc/login.defs")
-    elif platform.system() == "Darwin":
-        os.system("pwpolicy getaccountpolicies")
+    prompt = "do you want to know Password Policy? (y/n) (Press Enter to skip):"
+    more_info = input(Fore.MAGENTA +  prompt + Style.RESET_ALL )
+    if more_info.lower() == 'y':
+        print_message("info", f"Password Policy:")
+        if platform.system() == "Windows":
+            os.system("net accounts")
+        elif platform.system() == "Linux":
+            os.system("sudo grep '^PASS_MAX_DAYS\|^PASS_MIN_DAYS\|^PASS_WARN_AGE' /etc/login.defs")
+        elif platform.system() == "Darwin":
+            os.system("pwpolicy getaccountpolicies")
+    elif more_info.lower() == 'n' or more_info.lower() == '':
+        print_message("info", "No more information about Password Policy needed")
+    else:
+        print_message("error", "Invalid answer")
 
 def print_plist_table():
     headers = ["#", "Level", "Directory of Plist", "PID", "Process", "State", "Domain", "Open files by Process"]
@@ -636,8 +1018,73 @@ def print_help_ut():
     print(" all    : for all Users in OS")
     print(" system : for all System users in OS ")
     print(" other  : for all non system users in os")
+    print(" admins : for all administrators in os")
     pass
 
+def print_help_gt():
+    print(Fore.MAGENTA + "Usage:" + Style.RESET_ALL + " python ugsec.py -gt, --group-table " + Fore.CYAN + "[Arguments]" + Style.RESET_ALL +"\n")
+    print(Fore.CYAN + "Arguments:" + Style.RESET_ALL)
+    print(" all    : for all groups in OS")
+    print(" system : for all System groups in OS ")
+    print(" other  : for all non system groups in os")
+    pass
+
+def print_help_gu():
+    print(Fore.MAGENTA + "Usage:" + Style.RESET_ALL + " python ugsec.py -gu, --get-user-info " + Fore.CYAN + "[Arguments]" + Style.RESET_ALL +"\n")
+    print(Fore.CYAN + "Arguments:" + Style.RESET_ALL)
+    print("username : for one username")
+    print("username1 username2 username3 : for multi users separated by spaces")
+    pass
+
+def print_help_gg():
+    print(Fore.MAGENTA + "Usage:" + Style.RESET_ALL + " python ugsec.py -gg, --get-group-info " + Fore.CYAN + "[Arguments]" + Style.RESET_ALL +"\n")
+    print(Fore.CYAN + "Arguments:" + Style.RESET_ALL)
+    print("groupname : for one groupname")
+    print("groupname1 groupname1 groupname3 : for multi groups separated by spaces")
+    pass
+
+def print_help_au():
+    print(Fore.MAGENTA + "Usage:" + Style.RESET_ALL + " python ugsec.py -au, --add-user " + Fore.CYAN + "[Arguments]" + Style.RESET_ALL +"\n")
+    print(Fore.CYAN + "Arguments:" + Style.RESET_ALL)
+    print("username : for one username")
+    print("username1 username2 username3 : for multi users separated by spaces")
+    pass
+
+def print_help_ag():
+    print(Fore.MAGENTA + "Usage:" + Style.RESET_ALL + " python ugsec.py -ag, --add-group " + Fore.CYAN + "[Arguments]" + Style.RESET_ALL +"\n")
+    print(Fore.CYAN + "Arguments:" + Style.RESET_ALL)
+    print("groupname : for one groupname")
+    print("groupname1 groupname1 groupname3 : for multi groups separated by spaces")
+    pass
+
+def print_help_dum():
+    print(Fore.MAGENTA + "Usage:" + Style.RESET_ALL + " python ugsec.py -dum, --delete-user-memberships " + Fore.CYAN + "[Arguments]" + Style.RESET_ALL +"\n")
+    print(Fore.CYAN + "Arguments:" + Style.RESET_ALL)
+    print("groupname : for one groupname to delete users memberships")
+    print("groupname1 groupname1 groupname3 : for multi groups separated by spaces delete users memberships")
+    pass
+
+def print_help_dg():
+    print(Fore.MAGENTA + "Usage:" + Style.RESET_ALL + " python ugsec.py -dg, --delete-groups " + Fore.CYAN + "[Arguments]" + Style.RESET_ALL +"\n")
+    print(Fore.CYAN + "Arguments:" + Style.RESET_ALL)
+    print("groupname : to delete groupname")
+    print("groupname1 groupname1 groupname3 : for multi groups separated by spaces delete groups")
+    pass
+
+def print_help_du():
+    print(Fore.MAGENTA + "Usage:" + Style.RESET_ALL + " python ugsec.py -du, --delete-users " + Fore.CYAN + "[Arguments]" + Style.RESET_ALL +"\n")
+    print(Fore.CYAN + "Arguments:" + Style.RESET_ALL)
+    print("username : to delete username")
+    print("username1 username2 username3 : to delete for multi users separated by spaces")
+    pass
+
+def print_help_gs():
+    print(Fore.MAGENTA + "Usage:" + Style.RESET_ALL + " python ugsec.py -gs, --get-startups " + Fore.CYAN + "[Arguments]" + Style.RESET_ALL +"\n")
+    print(Fore.CYAN + "Arguments:" + Style.RESET_ALL)
+    print(" all    : for all startups scripts in OS")
+    print(" system : for all System startups scripts in OS ")
+    print(" users  : for all non system startups scripts in os")
+    pass
 #################### User and Group Management Functions:
 
 def add_user(username):
@@ -682,6 +1129,16 @@ def add_user(username):
     except subprocess.CalledProcessError:
         print_message("error", f"Failed to add user '{username}' to the group '{groupname}' with additional options.")
 
+        if platform.system() == "Linux":
+            # Linux-specific user creation logic
+            subprocess.check_call(["sudo", "useradd", username, "-G", groupname] + additional_options)
+            print_message("info", f"User '{username}' added successfully to the group '{groupname}' on Linux.")
+        elif platform.system() == "Windows":
+            # Windows-specific user creation logic
+            subprocess.check_call(["net", "user", username, password, "/add"])
+            subprocess.check_call(["net", "localgroup", groupname, username, "/add"])
+            print_message("info", f"User '{username}' added successfully to the group '{groupname}' on Windows.")
+
 def add_group(groupname):
     try:
         subprocess.check_call(["sudo", "dscl", ".", "-create", f"/Groups/{groupname}"])
@@ -713,6 +1170,15 @@ def add_group(groupname):
     except subprocess.CalledProcessError:
         print_message("error", f"Failed to add group '{groupname}' with additional options.")
 
+        if platform.system() == "Linux":
+            # Linux-specific group creation logic
+            subprocess.check_call(["groupadd", groupname])
+            print_message("info", f"Group '{groupname}' added successfully on Linux.")
+        elif platform.system() == "Windows":
+            # Windows-specific group creation logic
+            subprocess.check_call(["net", "localgroup", groupname, "/add"])
+            print_message("info", f"Group '{groupname}' added successfully on Windows.")
+
 def delete_user_memberships(groupname):
     group_members = get_group_members(groupname)
     if not group_members:
@@ -724,7 +1190,7 @@ def delete_user_memberships(groupname):
         print_message("error", f"{i}. {member}")
 
     prompt = "Enter the number(s) of the user(s) to delete from the group '{groupname}' (separated by spaces), or enter 'all' to delete all users: "
-    choice = input(Fore.MAGENTA + prompt)
+    choice = input(Fore.MAGENTA + prompt + Style.RESET_ALL)
     if choice.lower() == 'all':
         users_to_delete = group_members
     else:
@@ -737,7 +1203,12 @@ def delete_user_memberships(groupname):
 
     for user in users_to_delete:
         try:
-            subprocess.check_call(["dseditgroup", "-o", "edit", "-d", user, "-t", "user", groupname])
+            if platform.system() == "Darwin":
+                subprocess.check_call(["dseditgroup", "-o", "edit", "-d", user, "-t", "user", groupname])
+            elif platform.system() == "Linux":
+                subprocess.check_call(["sudo", "deluser", user, groupname])
+            elif platform.system() == "Windows":
+                subprocess.check_call(["net", "localgroup", groupname, user, "/delete"])
             print_message("info", f"User '{user}' deleted from group '{groupname}' successfully.")
         except subprocess.CalledProcessError:
             print_message("error", f"Failed to delete user '{user}' from group '{groupname}'.")
@@ -747,21 +1218,39 @@ def delete_users(usernames):
     for name in usernames:
         deleted_users.append(name)
         try:
-            subprocess.check_call(["sudo", "dscl", ".", "-delete", f"/Users/{name}"])
-            message = f"User '{name}' deleted successfully."
-            print_message("info",message)
+            if platform.system() == "Darwin":
+                subprocess.check_call(["sudo", "dscl", ".", "-delete", f"/Users/{name}"])
+                message = f"User '{name}' deleted successfully."
+                print_message("info", message)
+            elif platform.system() == "Linux":
+                subprocess.check_call(["sudo", "userdel", name])
+                message = f"User '{name}' deleted successfully."
+                print_message("info", message)
+            elif platform.system() == "Windows":
+                # Add Windows-specific deletion logic here
+                subprocess.check_call(["net", "user", name, "/delete"])
+                message = f"User '{name}' deleted successfully."
+                print_message("info", message)
         except subprocess.CalledProcessError:
             print_message("error", f"Failed to delete user: {name}")
 
-        prompt = "Do you want to delete the home directory of user '{name}' as well? (y/n): "
-        choice = input(Fore.MAGENTA + prompt)
+        prompt = f"Do you want to delete the home directory of user '{name}' as well? (y/n): "
+        choice = input(Fore.MAGENTA + prompt + Style.RESET_ALL)
         if choice.lower() == 'y':
             try:
-                subprocess.check_call(["sudo", "rm", "-rf", f"/Users/{name}"])
-                print_message("info", f"Home directory of user '{name}' deleted successfully.")
+                if platform.system() == "Darwin":
+                    subprocess.check_call(["sudo", "rm", "-rf", f"/Users/{name}"])
+                    print_message("info", f"Home directory of user '{name}' deleted successfully.")
+                elif platform.system() == "Linux":
+                    subprocess.check_call(["sudo", "rm", "-rf", f"/home/{name}"])
+                    print_message("info", f"Home directory of user '{name}' deleted successfully.")
+                elif platform.system() == "Windows":
+                    # Add Windows-specific home directory deletion logic here
+                    subprocess.check_call(["rmdir", f"C:\\Users\\{name}", "/s", "/q"])
+                    print_message("info", f"Home directory of user '{name}' deleted successfully.")
             except subprocess.CalledProcessError:
-                print_message("error", f"Failed to delete home directory of user '{name}'. or user '{name}' has no directory")
-    
+                print_message("error", f"Failed to delete home directory of user '{name}' or user '{name}' has no directory")
+
     print_message("error", f"Deleted user(s): {', '.join(deleted_users)}")
 
 def delete_groups(groupnames):
@@ -770,26 +1259,31 @@ def delete_groups(groupnames):
     for name in groupnames:
         deleted_groups.append(name)
         try:
-            subprocess.check_call(["sudo", "dscl", ".", "-delete", "/Groups/" + name])
+            if platform.system() == "Darwin":
+                subprocess.check_call(["sudo", "dscl", ".", "-delete", "/Groups/" + name])
+            elif platform.system() == "Linux":
+                subprocess.check_call(["sudo", "groupdel", name])
+            elif platform.system() == "Windows":
+                subprocess.check_call(["net", "localgroup", name, "/delete"])
         except subprocess.CalledProcessError:
             print_message("error", f"Failed to delete group: {name}")
 
         # Check if the group has any users as members
         group_members = get_group_members(name)
         if group_members:
-            prompt = "The group '{name}' has {len(group_members)} user(s) as members. Do you want to delete these users as well? (y/n): "
-            choice = input(Fore.MAGENTA + prompt)
+            prompt = f"The group '{name}' has {len(group_members)} user(s) as members. Do you want to delete these users as well? (y/n): "
+            choice = input(Fore.MAGENTA + prompt + Style.RESET_ALL)
             if choice.lower() == 'y':
-                for member in group_members:
-                    try:
-                        subprocess.check_call(["sudo", "dscl", ".", "-delete", f"/Users/{member}"])
-                        deleted_users.append(member)
-                    except subprocess.CalledProcessError:
-                        print_message("error", f"Failed to delete user: {member}")
+                try:
+                    delete_users(group_members)  # Call the existing delete_users function
+                    deleted_users.extend(group_members)
+                except subprocess.CalledProcessError:
+                    print_message("error", f"Failed to delete users: {', '.join(group_members)}")
 
     print_message("info", f"Deleted group(s): {', '.join(deleted_groups)}")
     if deleted_users:
         print_message("error", f"Deleted user(s): {', '.join(deleted_users)}")
+
 
 #################### User and Group Information Functions:
 
@@ -841,17 +1335,30 @@ def get_user_info_by_username(usernames):
                 print_message("info", f"No open files found for User '{username}'.")
 
 def get_group_info_by_groupname(groupname):
-    if groupname.isdigit() and 0 < int(groupname) <= len(group_info):
-        index = int(groupname) - 1
-        print_message("info", f"Group Information:")
-        print_group_info(group_info[index])
-    else:
+    system = platform.system()
+    if system == "Darwin":
         try:
             group_info_output = subprocess.check_output(f"dscl . -read /Groups/{groupname}", shell=True, text=True)
             print_message("info", f"Group Information:")
             print(colorize_column(group_info_output, False, Fore.WHITE))  # Set 'False' as the second argument for keys
         except subprocess.CalledProcessError:
             print(colorize_column(f"Group '{groupname}' not found.", True, Fore.RED))  # Add 'True' as the second argument
+    elif system == "Windows":
+        try:
+            group_info_output = subprocess.check_output(f"net localgroup {groupname}", shell=True, text=True)
+            print_message("info", f"Group Information:")
+            print(colorize_column(group_info_output, False, Fore.WHITE))  # Set 'False' as the second argument for keys
+        except subprocess.CalledProcessError:
+            print(colorize_column(f"Group '{groupname}' not found.", True, Fore.RED))  # Add 'True' as the second argument
+    elif system == "Linux":
+        try:
+            group_info_output = subprocess.check_output(f"getent group {groupname}", shell=True, text=True)
+            print_message("info", f"Group Information:")
+            print(colorize_column(group_info_output, False, Fore.WHITE))  # Set 'False' as the second argument for keys
+        except subprocess.CalledProcessError:
+            print(colorize_column(f"Group '{groupname}' not found.", True, Fore.RED))  # Add 'True' as the second argument
+    else:
+        print(f"Unsupported system: {system}.")
 
 #################### Main Function:
 
@@ -873,12 +1380,12 @@ def main():
             print_message("info", f"=================User and Group Management==============")
             print_message("info", f"========================================================")
             print("Select an option:")
-            print("  1. Display Users Information")
-            print("  2. Display Groups Information")
+            print("  1. Display Users Table")
+            print("  2. Display Groups Table")
             print("  3. Delete User(s)")
             print("  4. Delete Group(s)")
             print("  5. Get User Information by Username")
-            print("  6. Get Group Information by Group Name")
+            print("  6. Get Group Information by GroupName")
             print("  7. Add User")
             print("  8. Add Group")
             print("  9. Help")
@@ -889,14 +1396,18 @@ def main():
                 while True:
                     print("1. all    : for all Users in OS")
                     print("2. system : for all System users in OS ")
-                    print("3. other  : for all non system users in os")
+                    print("3. admins  : for all non system users in os")
+                    print("4. other  : for all non system users in os")
                     print("0. quit   : go back to main menu")
                     users_choice = input(Fore.MAGENTA + "enter your choice (enter to skip for all users):" + Style.RESET_ALL)
                     if users_choice  == "1" or  users_choice == "all" or users_choice == "":
                         print_user_table("all")
                     elif users_choice == "2" or users_choice == "system":
                         print_user_table("system")
-                    elif users_choice == "3" or users_choice == "other":
+                    elif users_choice == "3" or users_choice == "admins":
+                        print_admin_accounts()
+
+                    elif users_choice == "4" or users_choice == "other":
                         print_user_table("other")
                     elif users_choice == "0" or users_choice == "Quit":
                         break
@@ -905,7 +1416,23 @@ def main():
                         break                    
 
             elif choice == "2":
-                print_group_table()
+                while True:
+                    print("1. all    : for all groups in OS")
+                    print("2. system : for all System groups in OS ")
+                    print("3. other  : for all non system groups in os")
+                    print("0. quit   : go back to main menu")
+                    group_choice = input(Fore.MAGENTA + "enter your choice (enter to skip for all groups):" + Style.RESET_ALL)
+                    if group_choice  == "1" or  group_choice == "all" or group_choice == "":
+                        print_group_table("all")
+                    elif group_choice == "2" or group_choice == "system":
+                        print_group_table("system")
+                    elif group_choice == "3" or group_choice == "other":
+                        print_group_table("other")
+                    elif group_choice == "0" or group_choice == "Quit":
+                        break
+                    else:
+                        print_message("error", "please enter a valid argument")
+                        break 
 
             elif choice == "3":
                 usernames = input(Fore.MAGENTA + "Enter the username(s) to delete (separated by spaces): " + Style.RESET_ALL).split()
@@ -953,95 +1480,138 @@ def main():
                 print_help_ut()
             elif "all" in arguments or "system" in arguments or "other" in arguments or not arguments:
                 print_user_table(arguments)
+            elif "admins" in arguments: 
+                print_admin_accounts()
             else:
                 print_message("error", "please enter a valid argument")
                 print_help_ut()
+                return
             
-        elif option in ['-gt', '--group-table']:
-            print_group_table()
-        
-        elif option in ['-ud', '--users_discovery']:
-            # Get list of Administrator Accounts
-            admins = get_admin_accounts()
-            colored_admins = colorize_column(", ".join(admins), True, Fore.RED)
-            print("administrators accounts:", colored_admins)
-            # Prompt for more info about administrators
-            prompt = "Do you want more information about the administrators? (y/n): "
-            choice = input(Fore.MAGENTA +  prompt)
-
-            if choice.lower() == 'y':
-                # Prompt for usernames
-                get_user_info_by_username(admins)
+        elif option in ['-gt', '--groups-table']:
+            if "-h" in arguments:
+                print_help_gt()
+            elif "all" in arguments or "system" in arguments or "other" in arguments or not arguments:
+                print_group_table(arguments)
             else:
-                # Print Password Policy
-                print_message("info", f"Password Policy:")
-                print_password_policy()
+                print_message("error", "please enter a valid argument")
+                print_help_gt()
+                return
 
         elif option in ['-du', '--delete-users']:
             if len(sys.argv) < 3:
-                print_message("error", f"Error: username not provided.")
+                print_help_du("error", f"Error: username not provided.")
                 print_help()
                 return
-            usernames = sys.argv[2:]
-            delete_users(usernames)
+            elif len(sys.argv) >= 3:
+                if "-h" in arguments:
+                    print_help_du()
+                for argument in arguments:
+                    delete_users(argument)
+            else:
+                print_message("error", "Invalid argument")
+                print_help_du()
+                return
 
         elif option in ['-dg', '--delete-groups']:
             if len(sys.argv) < 3:
                 print_message("error", f"Error: groupname not provided.")
-                print_help()
+                print_help_dg()
                 return
-            groupnames = sys.argv[2:]
-            delete_groups(groupnames)
+            elif len(sys.argv) >= 3:
+                if "-h" in arguments:
+                    print_help_dg()
+                for argument in arguments:
+                    delete_groups(argument)
+            else:
+                print_message("error", "Invalid argument")
+                print_help_dg()
+                return
 
         elif option in ['-dum', '--delete-user-memberships']:
             if len(sys.argv) < 3:
                 print_message("error", f"Error: groupname not provided.")
-                print_help()
+                print_help_dum()
                 return
-            groupname = sys.argv[2]
-            delete_user_memberships(groupname)
+            elif len(sys.argv) >= 3:
+                if "-h" in arguments:
+                    print_help_dum()
+                for argument in arguments:
+                    delete_user_memberships(argument)
+            else:
+                print_message("error", "Invalid argument")
+                print_help_dum()
+                return
 
         elif option in ['-gu', '--get-user-info']:
             if len(sys.argv) < 3:
                 print_message("error", f"Error: username not provided.")
-                print_help()
+                print_help_gu()
                 return
-            elif len(sys.argv) == 3:
-                username = sys.argv[2]
-                get_user_info_by_username(username)
-            elif len(sys.argv) > 3:
-                usernames = sys.argv[2:]
-                for username in usernames:
-                    get_user_info_by_username(username)
+            elif len(sys.argv) >= 3:
+                if "-h" in arguments:
+                    print_help_gu()
+                for argument in arguments:
+                    get_user_info_by_username(argument)
+            else:
+                print_message("error", "Invalid argument")
+                print_help_gu()
+                return
 
-        elif option in ['-gp', '--get-plists']:
-            colored_table = print_plist_table()
-            print(colored_table)
+        elif option in ['-gs', '--get-startups']:
+            if "-h" in arguments:
+                print_help_gs()
+            elif "all" in arguments or "system" in arguments or "user" in arguments or not arguments:
+                get_startup_programs() 
+            else:
+                print_message("error", "Invalid argument")
+                print_help_gs()
+                return
 
         elif option in ['-gg', '--get-group-info']:
             if len(sys.argv) < 3:
                 print_message("error", f"Error: groupname not provided.")
-                print_help()
+                print_help_gg()
                 return
-            groupname = sys.argv[2]
-            get_group_info_by_groupname(groupname)
-
+            elif len(sys.argv) >= 3:
+                if "-h" in arguments:
+                    print_help_gg()
+                for argument in arguments:
+                    get_group_info_by_groupname(argument)
+            else:
+                print_message("error", "Invalid argument")
+                print_help_gg()
+                return
+            
         elif option in ['-au', '--add-user']:
             if len(sys.argv) < 3:
                 print_message("error", f"Error: username not provided.")
-                print_help()
+                print_help_au()
                 return
-            username = sys.argv[2]
-            add_user(username)
+            elif len(sys.argv) >= 3:
+                if "-h" in arguments:
+                    print_help_au()
+                for argument in arguments:
+                    add_user(argument)
+            else:
+                print_message("error", "Invalid argument")
+                print_help_au()
+                return
 
         elif option in ['-ag', '--add-group']:
             if len(sys.argv) < 3:
                 print_message("error", f"Error: groupname not provided.")
-                print_help()
+                print_help_ag()
                 return
-            groupname = sys.argv[2]
-            add_group(groupname)
-
+            elif len(sys.argv) >= 3:
+                if "-h" in arguments:
+                    print_help_ag()
+                for argument in arguments:
+                    add_group(argument)
+            else:
+                print_message("error", "Invalid argument")
+                print_help_ag()
+                return
+            
         elif option in ['-h', '--help']:
             print_help()
 
