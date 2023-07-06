@@ -70,6 +70,7 @@ import pwd
 import grp
 import platform
 import sys
+#import winreg check why error installing
 import subprocess
 import readline
 import datetime
@@ -675,74 +676,157 @@ def get_plist_info(plist_path):
         print_message("error", f"Error message: {str(e)}")
         return None
 
-def get_startup_programs():
+
+def get_cron_tab(filter):
     startup_programs = []
-
-    system = platform.system()
-
-    if system == "Windows":
-        try:
-            import winreg
-
-            reg_path = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
-            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, reg_path) as reg_key:
-                num_entries = winreg.QueryInfoKey(reg_key)[0]
-                for i in range(num_entries):
-                    value_name, value_data, _ = winreg.EnumValue(reg_key, i)
-                    startup_programs.append({"Name": value_name, "Path": value_data})
-        except ImportError:
-            pass
-
-    elif system == "Linux":
-        # Check autostart directories
-        autostart_dirs = [
-            os.path.expanduser("~/.config/autostart"),
-            "/etc/xdg/autostart"
-        ]
-
-        for autostart_dir in autostart_dirs:
-            if os.path.isdir(autostart_dir):
-                for file_name in os.listdir(autostart_dir):
-                    file_path = os.path.join(autostart_dir, file_name)
-                    if os.path.isfile(file_path) and file_name.endswith(".desktop"):
-                        with open(file_path, "r") as file:
-                            for line in file:
-                                if line.startswith("Exec="):
-                                    program_name = line[5:].strip()
-                                    startup_programs.append({"Name": file_name, "Path": program_name})
-                                    break
-
-        # Check cron jobs
-        try:
-            output = subprocess.check_output("crontab -l", shell=True, text=True)
-            lines = output.strip().split("\n")
-            for line in lines:
-                if not line.startswith("#"):
-                    cron_job = line.split(" ", maxsplit=5)
-                    program_name = cron_job[-1]
-                    startup_programs.append({"Name": "Cron Job", "Path": program_name})
-        except subprocess.CalledProcessError:
-            pass
-
-    elif system == "Darwin":
-        # Check autostart directories
-        colored_table = print_plist_table()
-        print(colored_table)
-
-        # Check cron jobs
-        try:
-            output = subprocess.check_output("crontab -l", shell=True, text=True)
-            lines = output.strip().split("\n")
-            for line in lines:
-                if not line.startswith("#"):
-                    cron_job = line.split(" ", maxsplit=5)
-                    program_name = cron_job[-1]
-                    startup_programs.append({"Name": "Cron Job", "Path": program_name})
-        except subprocess.CalledProcessError:
-            pass
+    try:
+        if "system" in filter:
+            output = subprocess.run("cut -f1 -d: /etc/passwd | grep -v '^[#]' | grep '[^_]' ", shell=True, capture_output=True, text=True)
+            users = output.stdout.strip().split("\n")
+            for user in users:
+                try:
+                    output = subprocess.run(f"sudo crontab -u {user} -l", shell=True, capture_output=True, text=True)
+                    if output.stdout.strip() == "" or output.stdout.strip() == f"crontab: no crontab for {user}":
+                        print_message("info", f"No crontab for {user}")
+                    else:
+                        lines = output.stdout.strip().split("\n")
+                        for line in lines:
+                            if not line.startswith("#"):
+                                cron_job = line.split(" ", maxsplit=5)
+                                program_name = cron_job[-1]
+                                startup_programs.append({"Name": "Cron Job", "Path": program_name})
+                except subprocess.CalledProcessError:
+                    pass
+        elif "admins" in filter:
+            admins = get_admin_accounts()
+            for user in admins:
+                try:  
+                    output = subprocess.run(f"sudo crontab -u {user} -l", shell=True, capture_output=True, text=True)
+                    if output.stdout.strip() == "" or output.stdout.strip() == f"crontab: no crontab for {user}":
+                        print_message("info", f"No crontab for {user}")
+                    else:
+                        lines = output.stdout.strip().split("\n")
+                        for line in lines:
+                            if not line.startswith("#"):
+                                cron_job = line.split(" ", maxsplit=5)
+                                program_name = cron_job[-1]
+                                startup_programs.append({"Name": "Cron Job", "Path": program_name})
+                except subprocess.CalledProcessError:
+                    pass
+        elif "user" in filter:
+            output = subprocess.run("cut -f1 -d: /etc/passwd | grep -v '^[#_]'", shell=True, capture_output=True, text=True)
+            users = output.stdout.strip().split("\n")
+            for user in users:
+                try:
+                    output = subprocess.run(f"sudo crontab -u {user} -l", shell=True, capture_output=True, text=True)
+                    if output.stdout.strip() == "" or output.stdout.strip() == f"crontab: no crontab for {user}":
+                        print_message("info", f"No crontab for {user}")
+                    else:
+                        lines = output.stdout.strip().split("\n")
+                        for line in lines:
+                            if not line.startswith("#"):
+                                cron_job = line.split(" ", maxsplit=5)
+                                program_name = cron_job[-1]
+                                startup_programs.append({"Name": "Cron Job", "Path": program_name})
+                except subprocess.CalledProcessError:
+                    pass
+        elif "all" in filter:
+            output = subprocess.run("cut -f1 -d: /etc/passwd | grep -v '^#'", shell=True, capture_output=True, text=True)
+            users = output.stdout.strip().split("\n")
+            admins = get_admin_accounts()
+            all_users = admins + users
+            for user in all_users:
+                try:
+                    output = subprocess.run(f"sudo crontab -l -u {user}", shell=True, capture_output=True, text=True)
+                    if output.stdout.strip() == "" or output.stdout.strip() == f"crontab: no crontab for {user}":
+                        print_message("info", f"No crontab for {user}")
+                    else:
+                        lines = output.stdout.strip().split("\n")
+                        for line in lines:
+                            if not line.startswith("#"):
+                                cron_job = line.split(" ", maxsplit=5)
+                                program_name = cron_job[-1]
+                                startup_programs.append({"Name": "Cron Job", "Path": program_name})
+                except subprocess.CalledProcessError:
+                    pass
+    except subprocess.CalledProcessError:
+        pass
 
     return startup_programs
 
+
+def get_windows_startups_services():
+    startup_programs = []
+    try:
+        reg_path = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, reg_path) as reg_key:
+            num_entries = winreg.QueryInfoKey(reg_key)[0]
+            for i in range(num_entries):
+                value_name, value_data, _ = winreg.EnumValue(reg_key, i)
+                startup_programs.append({"Name": value_name, "Path": value_data})
+        return startup_programs
+    except ImportError:
+        pass
+    return startup_programs
+
+def get_linux_startups_services():
+    startup_programs = []
+    autostart_dirs = [
+        os.path.expanduser("~/.config/autostart"),
+        "/etc/xdg/autostart"
+    ]
+
+    for autostart_dir in autostart_dirs:
+        if os.path.isdir(autostart_dir):
+            for file_name in os.listdir(autostart_dir):
+                file_path = os.path.join(autostart_dir, file_name)
+                if os.path.isfile(file_path) and file_name.endswith(".desktop"):
+                    with open(file_path, "r") as file:
+                        for line in file:
+                            if line.startswith("Exec="):
+                                program_name = line[5:].strip()
+                                startup_programs.append({"Name": file_name, "Path": program_name})
+                                break
+    try:
+        output = subprocess.check_output("sudo systemctl list-units --type=service --all", shell=True, text=True)
+        lines = output.strip().split("\n")
+        for line in lines[1:]:  # Skip the header line
+            service_info = line.split()
+            service_name = service_info[0]
+            startup_programs.append({"Name": service_name, "Path": "Systemd Service"})
+    except subprocess.CalledProcessError:
+        pass
+
+        # Check sysvinit services (if available)
+    try:
+        output = subprocess.check_output("sudo service --status-all", shell=True, text=True)
+        lines = output.strip().split("\n")
+        for line in lines:
+            if line.strip().endswith("running"):
+                service_name = line.strip().split()[3]
+                startup_programs.append({"Name": service_name, "Path": "SysVinit Service"})
+    except subprocess.CalledProcessError:
+        pass
+    return startup_programs
+
+def get_startup_programs(filter):
+    
+    system = platform.system()
+
+    if system == "Windows":
+        get_windows_startups_services()
+    elif system == "Linux":
+        # Check autostart directories
+        get_linux_startups_services()
+        # Check cron jobs
+        get_cron_tab(filter)
+    elif system == "Darwin":
+        # Check autostart directories
+        colored_table = print_plist_table(filter)
+        print(colored_table)
+        # Check cron jobs
+        get_cron_tab(filter)
+        
 #################### Display Functions:
 
 def display_user_table(data, condition_func=None , truncate=True):
@@ -946,20 +1030,29 @@ def print_password_policy():
     else:
         print_message("error", "Invalid answer")
 
-def print_plist_table():
+def print_plist_table(filter):
     headers = ["#", "Level", "Directory of Plist", "PID", "Process", "State", "Domain", "Open files by Process"]
     table_data = []
-
-    directories = [
+    row_number = 1
+    if filter == "user":
+        directories = [
+        ("User Agents", os.path.expanduser("~/Library/LaunchAgents")),
+        ("Global Agents", "/Library/LaunchAgents"),
+        ]
+    elif filter == "system":
+        directories = [
+        ("Global Daemons", os.path.expanduser("/Library/LaunchDaemons")),
+        ("System Agents", "/System/Library/LaunchAgents"),
+        ("System Daemons", "/System/Library/LaunchDaemons")
+        ]
+    elif filter == "all" or filter == "admins" or not filter: 
+        directories = [
         ("User Agents", os.path.expanduser("~/Library/LaunchAgents")),
         ("Global Agents", "/Library/LaunchAgents"),
         ("Global Daemons", "/Library/LaunchDaemons"),
         ("System Agents", "/System/Library/LaunchAgents"),
         ("System Daemons", "/System/Library/LaunchDaemons")
     ]
-
-    row_number = 1
-
     for level, directory in directories:
         config_files = list_config_files(directory)
         for plist_path in config_files:
@@ -1083,8 +1176,10 @@ def print_help_gs():
     print(Fore.CYAN + "Arguments:" + Style.RESET_ALL)
     print(" all    : for all startups scripts in OS")
     print(" system : for all System startups scripts in OS ")
-    print(" users  : for all non system startups scripts in os")
+    print(" user  : for all non system startups scripts in os")
+    print(" admins : for all administrators startups scripts in os")
     pass
+
 #################### User and Group Management Functions:
 
 def add_user(username):
@@ -1284,7 +1379,6 @@ def delete_groups(groupnames):
     if deleted_users:
         print_message("error", f"Deleted user(s): {', '.join(deleted_users)}")
 
-
 #################### User and Group Information Functions:
 
 def get_user_info_by_username(usernames):
@@ -1388,7 +1482,8 @@ def main():
             print("  6. Get Group Information by GroupName")
             print("  7. Add User")
             print("  8. Add Group")
-            print("  9. Help")
+            print("  9. startup programs and scripts")
+            print("  10. Help")
             print("  0. Quit")
             pass
             choice = input(Fore.MAGENTA + "Enter your choice:" + Style.RESET_ALL)
@@ -1459,11 +1554,29 @@ def main():
                 add_group(groupname)
 
             elif choice == "9":
-                print_help()
-
+                while True:
+                    print("1. all    : for all startups scripts and programs in OS")
+                    print("2. system : for all System startups scripts and programs in OS ")
+                    print("3. admins : for all administrators startups scripts and programs in os")
+                    print("4. user   : for all non system users startups scripts and programs in os")
+                    print("0. quit   : go back to main menu")
+                    arguments = input(Fore.MAGENTA + "Enter group of users to get startups scripts and programs(Press Enter for All):" + Style.RESET_ALL).strip("")
+                    if "all" in arguments or not arguments or "1" in arguments:
+                        get_startup_programs("all") 
+                    elif "system" in arguments or "2" in arguments:
+                        get_startup_programs("system") 
+                    elif "admins" in arguments or "3" in arguments:
+                        get_startup_programs("admins")
+                    elif "user" in arguments or "4" in arguments:
+                        get_startup_programs("user") 
+                    elif "quit" in arguments or "0" in arguments:
+                        break
+                    else:
+                        print_message("error", "Invalid argument")
+                        print_help_gs()
+                        break
             elif choice == "10":
-                groupname = input(Fore.MAGENTA + "Enter the group name to delete users memberships: " + Style.RESET_ALL)
-                delete_user_memberships(groupname)
+                print_help()
 
             elif choice == "0":
                 print_message("info", f"Goodbye!")
@@ -1560,8 +1673,14 @@ def main():
         elif option in ['-gs', '--get-startups']:
             if "-h" in arguments:
                 print_help_gs()
-            elif "all" in arguments or "system" in arguments or "user" in arguments or not arguments:
-                get_startup_programs() 
+            elif "all" in arguments or not arguments:
+                get_startup_programs("all") 
+            elif "system" in arguments:
+                get_startup_programs("system") 
+            elif "admins" in arguments:
+                get_startup_programs("admins")
+            elif "user" in arguments:
+                get_startup_programs("user") 
             else:
                 print_message("error", "Invalid argument")
                 print_help_gs()
