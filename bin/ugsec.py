@@ -676,7 +676,6 @@ def get_plist_info(plist_path):
         print_message("error", f"Error message: {str(e)}")
         return None
 
-
 def get_cron_tab(filter):
     startup_programs = []
     try:
@@ -753,7 +752,6 @@ def get_cron_tab(filter):
         pass
 
     return startup_programs
-
 
 def get_windows_startups_services():
     startup_programs = []
@@ -1473,27 +1471,27 @@ def main():
             print_message("info", f"\n======================================================")
             print_message("info", f"=================User and Group Management==============")
             print_message("info", f"========================================================")
-            print("Select an option:")
-            print("  1. Display Users Table")
-            print("  2. Display Groups Table")
-            print("  3. Delete User(s)")
-            print("  4. Delete Group(s)")
-            print("  5. Get User Information by Username")
-            print("  6. Get Group Information by GroupName")
-            print("  7. Add User")
-            print("  8. Add Group")
-            print("  9. startup programs and scripts")
-            print("  10. Help")
-            print("  0. Quit")
+            print_message("info","Select an option:")
+            print_message("info","  1. Display Users Table")
+            print_message("info","  2. Display Groups Table")
+            print_message("info","  3. Delete User(s)")
+            print_message("info","  4. Delete Group(s)")
+            print_message("info","  5. Get User Information by Username")
+            print_message("info","  6. Get Group Information by GroupName")
+            print_message("info","  7. Add User")
+            print_message("info","  8. Add Group")
+            print_message("info","  9. startup programs and scripts")
+            print(Fore.YELLOW + "  10. Help" + Style.RESET_ALL)
+            print(Fore.RED +"  0. Quit" + Style.RESET_ALL)            
             pass
             choice = input(Fore.MAGENTA + "Enter your choice:" + Style.RESET_ALL)
             if choice == "1":
                 while True:
-                    print("1. all    : for all Users in OS")
-                    print("2. system : for all System users in OS ")
-                    print("3. admins  : for all non system users in os")
-                    print("4. other  : for all non system users in os")
-                    print("0. quit   : go back to main menu")
+                    print_message("info","1. all    : for all Users in OS")
+                    print_message("info","2. system : for all System users in OS ")
+                    print_message("info","3. admins  : for all non system users in os")
+                    print_message("info","4. other  : for all non system users in os")
+                    print(Fore.RED +"  0. Quit" + Style.RESET_ALL)            
                     users_choice = input(Fore.MAGENTA + "enter your choice (enter to skip for all users):" + Style.RESET_ALL)
                     if users_choice  == "1" or  users_choice == "all" or users_choice == "":
                         print_user_table("all")
@@ -1512,10 +1510,10 @@ def main():
 
             elif choice == "2":
                 while True:
-                    print("1. all    : for all groups in OS")
-                    print("2. system : for all System groups in OS ")
-                    print("3. other  : for all non system groups in os")
-                    print("0. quit   : go back to main menu")
+                    print_message("info","1. all    : for all groups in OS")
+                    print_message("info","2. system : for all System groups in OS ")
+                    print_message("info","3. other  : for all non system groups in os")
+                    print(Fore.RED +"  0. Quit" + Style.RESET_ALL)
                     group_choice = input(Fore.MAGENTA + "enter your choice (enter to skip for all groups):" + Style.RESET_ALL)
                     if group_choice  == "1" or  group_choice == "all" or group_choice == "":
                         print_group_table("all")
@@ -1555,11 +1553,11 @@ def main():
 
             elif choice == "9":
                 while True:
-                    print("1. all    : for all startups scripts and programs in OS")
-                    print("2. system : for all System startups scripts and programs in OS ")
-                    print("3. admins : for all administrators startups scripts and programs in os")
-                    print("4. user   : for all non system users startups scripts and programs in os")
-                    print("0. quit   : go back to main menu")
+                    print_message("info","1. all    : for all startups scripts and programs in OS")
+                    print_message("info","2. system : for all System startups scripts and programs in OS ")
+                    print_message("info","3. admins : for all administrators startups scripts and programs in os")
+                    print_message("info","4. user   : for all non system users startups scripts and programs in os")
+                    print(Fore.RED +"  0. Quit" + Style.RESET_ALL)
                     arguments = input(Fore.MAGENTA + "Enter group of users to get startups scripts and programs(Press Enter for All):" + Style.RESET_ALL).strip("")
                     if "all" in arguments or not arguments or "1" in arguments:
                         get_startup_programs("all") 
