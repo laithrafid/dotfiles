@@ -132,22 +132,39 @@ def classify_ipv6(ipv6_address):
         return 'Global'
 
 #################### Information Retrieval and processing Functions:
-
 def ping_ipv4(target, options):
     command = ["ping"] + options + [target]
     try:
-        ping_output = subprocess.check_output(command, stderr=subprocess.STDOUT, universal_newlines=True)
-        print_colored_output(ping_output)
+        ping_process = subprocess.Popen(command, stdout=subprocess.PIPE, bufsize=1, universal_newlines=True)
+        for line in iter(ping_process.stdout.readline, ''):
+            print_colored_output(line)
     except subprocess.CalledProcessError as e:
         print_message("error", f"Ping failed. Check the IPv4 address or hostname. Error: {e.output}")
 
 def ping_ipv6(target, options):
     command = ["ping6"] + options + [target]
     try:
-        ping_output = subprocess.check_output(command, stderr=subprocess.STDOUT, universal_newlines=True)
-        print_colored_output(ping_output)
+        ping_process = subprocess.Popen(command, stdout=subprocess.PIPE, bufsize=1, universal_newlines=True)
+        for line in iter(ping_process.stdout.readline, ''):
+            print_colored_output(line)
     except subprocess.CalledProcessError as e:
         print_message("error", f"Ping failed. Check the IPv6 address or hostname. Error: {e.output}")
+
+def print_colored_output(line):
+    line = line.rstrip("\n")  # Remove the trailing newline character
+    if "Request timeout for " in line or "100% packet loss" in line:
+        line = f"{Fore.RED}{line}{Style.RESET_ALL}"
+    elif "ttl=" in line:
+        line_parts = line.split()
+        for i, part in enumerate(line_parts):
+            if "ttl=" in part:
+                line_parts[i] = f"{Fore.MAGENTA}{part}{Style.RESET_ALL}"
+            elif "time=" in part:
+                line_parts[i] = f"{Fore.YELLOW}{part}{Style.RESET_ALL}"
+            elif "icmp_seq=" in part:
+                line_parts[i] = f"{Fore.GREEN}{part}{Style.RESET_ALL}"
+        line = " ".join(line_parts)
+    print(line)
 
 def process_line(line):
     # Define color codes
@@ -494,8 +511,6 @@ def check_open_ports_nmap(target, ports=None):
 
     return open_ports
 
-
-
 #################### Display Functions:
 def print_message(message_type,message):
     # Define color codes
@@ -555,7 +570,7 @@ def print_help_tc():
     print("4. tcpdump options:")
     print_help_tcpdump()
 
-def primt_help_tw():
+def print_help_tw():
     print(Fore.MAGENTA + "Usage:" + Style.RESET_ALL + " python netsec.py -tw,  --traceroute_whois " + Fore.CYAN + "[local_options]" + Style.RESET_ALL + Fore.RED + "[tr_options]" + Style.RESET_ALL + Fore.GREEN +"[target]" + Style.RESET_ALL +"\n")
     print(Fore.GREEN +"target:" + Style.RESET_ALL)
     print("hostname examples (google.com)")
@@ -567,7 +582,7 @@ def primt_help_tw():
     print_help_trace()
     print_help_trace6()
 
-def primt_help_ps():
+def print_help_ps():
     print(Fore.MAGENTA + "Usage:" + Style.RESET_ALL + " python netsec.py -ps, --portscan_scapy "+ Style.RESET_ALL + Fore.RED + "[ports]" + Style.RESET_ALL + Fore.GREEN +"[target]"+ Style.RESET_ALL +"\n")
     print(Fore.GREEN +"target:" + Style.RESET_ALL)
     print("hostname examples (google.com)")
@@ -577,7 +592,7 @@ def primt_help_ps():
     print("port[s] separated by spaces")
     print("if no port[s] entered, these ports will be scanned [21,22,25,80,53,443,445,8080,8443]")
 
-def primt_help_pn():
+def print_help_pn():
     print(Fore.MAGENTA + "Usage:" + Style.RESET_ALL + " python netsec.py -pn, --portscan_nmap "+ Style.RESET_ALL + Fore.RED + "[ports]" + Style.RESET_ALL + Fore.GREEN +"[target]"+ Style.RESET_ALL +"\n")
     print(Fore.GREEN +"target:" + Style.RESET_ALL)
     print("hostname examples (google.com)")
@@ -587,7 +602,7 @@ def primt_help_pn():
     print("port[s] separated by spaces")
     print("if no port[s] entered, these ports will be scanned [21,22,25,80,53,443,445,8080,8443]")
 
-def primt_help_p():
+def print_help_p():
     print(Fore.MAGENTA + "Usage:" + Style.RESET_ALL + " python netsec.py -p, --ping "+ Fore.RED + "[ping_options]" + Style.RESET_ALL + Fore.CYAN + "[local_options]" + Style.RESET_ALL + Fore.GREEN +"[target]"+ Style.RESET_ALL +"\n")
     print(Fore.GREEN +"target:" + Style.RESET_ALL)
     print("hostname examples (google.com)")
@@ -597,22 +612,7 @@ def primt_help_p():
     print("-4/-6 for target[hostname]")
     print_message("error", f"ping_options:")
     print_help_ping4()
-    print_help_trace6()
-
-def print_colored_output(output):
-    # Define colors
-    GREEN = '\033[92m'
-    RED = '\033[91m'
-    RESET = '\033[0m'
-    
-    lines = output.strip().split('\n')
-    for line in lines:
-        if "icmp_seq" in line or "64 bytes" in line:
-            print(GREEN + line + RESET)
-        elif "Destination Host Unreachable" in line or "Request timeout" in line:
-            print(RED + line + RESET)
-        else:
-            print(line)
+    print_help_ping6()
 
 def print_colored_table_ports(open_ports):
     headers = ["Port"]
@@ -655,38 +655,42 @@ def main():
             pass
             choice = input(Fore.MAGENTA +  "Enter your choice: " )
             if choice == "1":
-                target = input(Fore.MAGENTA + "Enter the IP address or hostname to ping:" + Style.RESET_ALL)
-                target = target.strip(" ")
-                options = input(Fore.MAGENTA + "Enter the option(s) -4 or -6 for target(hostname), Press Enter for Autorun(target/hostname>ipv4) or if target(IPv4/IPv6) ping : " + Style.RESET_ALL)
-                
-                if options == "-4":
-                    print_help_ping4()
-                    p_options = input(Fore.MAGENTA + "Enter Ping options(Press Enter to skip):" + Style.RESET_ALL)
-                elif options == "-6":
-                    print_help_ping6()
-                    p6_options = input(Fore.MAGENTA + "Enter Ping options(Press Enter to skip):" + Style.RESET_ALL)
-                else:
-                    p_options = input(Fore.MAGENTA + "Enter Ping options(Press Enter to skip):" + Style.RESET_ALL)
+                try:
+                    target = input(Fore.MAGENTA + "Enter the IP address or hostname to ping:" + Style.RESET_ALL)
+                    target = target.strip(" ")
+                    options = input(Fore.MAGENTA + "Enter the option(s) -4 or -6 for target(hostname), Press Enter for Autorun(target/hostname>ipv4) or if target(IPv4/IPv6) ping : " + Style.RESET_ALL)
+                    if options == "-4":
+                        print_help_ping4()
+                        p_options = input(Fore.MAGENTA + "Enter Ping options(Press Enter to skip):" + Style.RESET_ALL)
+                    elif options == "-6":
+                        print_help_ping6()
+                        p6_options = input(Fore.MAGENTA + "Enter Ping options(Press Enter to skip):" + Style.RESET_ALL)
+                    else:
+                        p_options = input(Fore.MAGENTA + "Enter Ping options(Press Enter to skip):" + Style.RESET_ALL)
 
-                if validate_hostname(target):
-                    if not options or '-4' in options:
-                        ping_ipv4(target, p_options.split())
-                    elif '-6' in options:
-                        ping_ipv6(target, p6_options.split())
+                    if validate_hostname(target):
+                        if not '-4' in options or '-4' in options:
+                            ping_ipv4(target, p_options.split())
+                        elif '-6' in options:
+                            ping_ipv6(target, p6_options.split())
+                        else:
+                            print_message("error", f"Invalid options provided. ")
+                    elif validate_ipv4(target):
+                        if not '-4' in options or '-4' in options:
+                            ping_ipv4(target, p_options.split())
+                        else:
+                            print_message("error", f"Invalid options provided for IPv4 target.")
+                    elif validate_ipv6(target):
+                        if not '-6' in options or '-6' in options:
+                            ping_ipv6(target, p6_options.split())
+                        else:
+                            print_message("error", f"Invalid options provided for IPv6 target.")
                     else:
-                        print_message("error", f"Invalid options provided. ")
-                elif validate_ipv4(target):
-                    if not options or '-4' in options:
-                        ping_ipv4(target, p_options.split())
-                    else:
-                        print_message("error", f"Invalid options provided for IPv4 target.")
-                elif validate_ipv6(target):
-                    if not options or '-6' in options:
-                        ping_ipv6(target, p6_options.split())
-                    else:
-                        print_message("error", f"Invalid options provided for IPv6 target.")
-                else:
-                    print_message("error", f"Invalid target provided, please Run Again. ")
+                        print_message("error", f"Invalid target provided, please Run Again. ")
+
+                except KeyboardInterrupt:
+                    print_message("info", "Ping interrupted by user.")
+                    continue
 
             elif choice == "2":
                 filter_choices = {
@@ -785,7 +789,7 @@ def main():
                     tr_options = input(Fore.MAGENTA + "Enter Traceroute options(Press Enter to skip):" + Style.RESET_ALL)
 
                 if validate_hostname(target):
-                    if not options or '-4' in options:
+                    if not '-4' in options or '-4' in options:
                         output = run_traceroute(target, tr_options.split() + ['-a', '-e'])
                         table = parse_output_ipv4(output)
                         print(table)
@@ -796,14 +800,14 @@ def main():
                     else:
                         print_message("error", f"Invalid options provided. ")
                 elif validate_ipv4(target):
-                    if not options or '-4' in options:
+                    if not '-4' in options or '-4' in options:
                         output = run_traceroute(target, tr_options.split() + ['-a', '-e'])
                         table = parse_output_ipv4(output)
                         print(table)
                     else:
                         print_message("error", f"Invalid options provided for IPv4 target.")
                 elif validate_ipv6(target):
-                    if not options or '-6' in options:
+                    if not '-6' in options or '-6' in options:
                         output = run_traceroute6(target, tr_options.split() + ['-l'])
                         table = parse_output_ipv6(output)
                         print(table)
@@ -897,16 +901,16 @@ def main():
         elif option in ['-tw', '--traceroute_whois']:
             if len(sys.argv) < 3:
                 print_message("info", f"Enter the target to run traceroute and whois on ")
-                primt_help_tw()
+                print_help_tw()
                 return
             options = sys.argv[2:-1]
             target = sys.argv[-1]
             tr_options = extract_tr_options(options)
             if '-h' in options:
-                primt_help_tw()
+                print_help_tw()
 
             if validate_hostname(target):
-                if not options or '-4' in options:
+                if not '-4' in options or '-4' in options:
                     output = run_traceroute(target, (tr_options + ['-a', '-e']))
                     table = parse_output_ipv4(output)
                     print(table)
@@ -916,9 +920,9 @@ def main():
                     print(table)
                 else:
                     print_message("error", f"Invalid options provided.")
-                    primt_help_tw()
+                    print_help_tw()
             elif validate_ipv4(target):
-                if not options or '-4' in options:
+                if not '-4' in options or '-4' in options:
                     output = run_traceroute(target, (tr_options + ['-a', '-e']))
                     table = parse_output_ipv4(output)
                     print(table)
@@ -926,7 +930,7 @@ def main():
                     print_message("error", f"Invalid options provided for IPv4 target.")
                     print_help_trace()
             elif validate_ipv6(target):
-                if not options or '-6' in options:
+                if not '-6' in options or '-6' in options:
                     output = run_traceroute6(target, (tr_options + ['-l']))
                     table = parse_output_ipv6(output)
                     print(table)
@@ -935,13 +939,13 @@ def main():
                     print_help_trace6()
             else:
                 print_message("error", f"Invalid target provided.")
-                primt_help_tw()
+                print_help_tw()
             pass
 
         elif option in ['-ps', '--portscan_scapy']:
             if len(sys.argv) < 3:
                 print_message("info", f"Enter the target to run traceroute and whois on ")
-                primt_help_ps()
+                print_help_ps()
                 return
             if len(sys.argv) == 3:
                 target = sys.argv[-1]
@@ -952,7 +956,7 @@ def main():
                     print_colored_table_ports(open_ports)
                 else:
                     print_message("error", f"Please enter valid ip/hostname to scan")
-                    primt_help_ps()
+                    print_help_ps()
             if len(sys.argv) > 3:
                 target = sys.argv[-1]
                 if validate_hostname(target) or validate_ipv4(target) or validate_ipv6(target):
@@ -962,13 +966,13 @@ def main():
                     print_colored_table_ports(open_ports)
                 else:
                     print_message("error", f"Please enter valid ip/hostname to scan")
-                    primt_help_ps()
+                    print_help_ps()
             pass
 
         elif option in ['-pn', '--portscan_nmap']:
             if len(sys.argv) < 3:
                 print_message("info",  "Enter the target to scan port using namp on ")
-                primt_help_pn()
+                print_help_pn()
                 return
             if len(sys.argv) == 3:
                 target = sys.argv[-1]
@@ -978,7 +982,7 @@ def main():
                     print_message("info", f"The open ports on the destination host are:")
                 else:
                     print_message("error", f"Please enter valid ip/hostname to scan")
-                    primt_help_pn()
+                    print_help_pn()
             if len(sys.argv) > 3:
                 target = sys.argv[-1]
                 if validate_hostname(target) or validate_ipv4(target) or validate_ipv6(target):
@@ -988,47 +992,43 @@ def main():
                     print_colored_table_ports(open_ports)
                 else:
                     print_message("error", f"Please enter valid ip/hostname to scan")
-                    primt_help_pn()
+                    print_help_pn()
             pass
 
         elif option in ['-p', '--ping']:
-            
-            if len(sys.argv) < 3:
+            if  "-h" in sys.argv[2:] :
+                print_help_p()
+            elif len(sys.argv) < 3:
                 print_message("info", f"Enter the target to ping")
-                primt_help_p()
+                print_help_p()
                 return
-            elif len(sys.argv) == 3:
-                target = sys.argv[-1]
-                if validate_hostname(target) or validate_ipv4(target):
-                    ping_ipv4(target,)
-                elif validate_ipv6(target):
-                    ping_ipv6(target,)
-                else:
-                     primt_help_p()
-            elif len(sys.argv) > 3:
+            elif len(sys.argv) >= 3:
                 target = sys.argv[-1]
                 options = sys.argv[2:-1]
-                p_options = options.strip("-4","-6")
-                if validate_hostname(target):
-                    if not options or '-4' in options:
-                        ping_ipv4(target, p_options.split())
-                    elif '-6' in options:
-                        ping_ipv6(target, p6_options.split())
+                p_options = [opt for opt in options if opt not in ['-4', '-6']]
+                try:
+                    if validate_hostname(target):
+                        if not '-4' in options or '-4' in options:
+                            ping_ipv4(target, p_options)
+                        elif '-6' in options:
+                            ping_ipv6(target, p_options)
+                        else:
+                            print_message("error", f"Invalid options provided. ")
+                    elif validate_ipv4(target):
+                        if not '-4' in options or '-4' in options:
+                            ping_ipv4(target, p_options)
+                        else:
+                            print_message("error","Invalid options provided for IPv4 target." )
+                    elif validate_ipv6(target):
+                        if not '-6' in options or '-6' in options:
+                            ping_ipv6(target, p_options)
+                        else:
+                            print_message("error","Invalid options provided for IPv6 target." )
                     else:
-                        print_message("error", f"Invalid options provided. ")
-                elif validate_ipv4(target):
-                    if not options or '-4' in options:
-                        ping_ipv4(target, p_options.split())
-                    else:
-                        print_message("error","Invalid options provided for IPv4 target." )
-                elif validate_ipv6(target):
-                    if not options or '-6' in options:
-                        ping_ipv6(target, p6_options.split())
-                    else:
-                        print_message("error","Invalid options provided for IPv6 target." )
-                else:
-                    print_message("error", f"Invalid target provided, please Run Again. ")
-
+                        print_message("error", f"Invalid target provided, please Run Again. ")
+                except KeyboardInterrupt:
+                            print_message("info", "Ping interrupted by user.")
+                            sys.exit(0)
             pass    
 
         elif option in ['-h', '--help']:
