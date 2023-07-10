@@ -519,10 +519,10 @@ def get_safe_storage_key():
         safe_storage_key = output.strip()
         return safe_storage_key
     except subprocess.CalledProcessError:
-        print("ERROR getting Chrome Safe Storage Key")
+        print_message("error","Error getting Chrome Safe Storage Key")
         return None
 
-def decrypt_mac_chrome_password(encrypted_value, safe_storage_key):
+def decrypt_mac_chrome_secrets(encrypted_value, safe_storage_key):
     iv = b' ' * 16
     key = hashlib.pbkdf2_hmac('sha1', safe_storage_key, b'saltysalt', 1003)[:16]
 
@@ -530,6 +530,36 @@ def decrypt_mac_chrome_password(encrypted_value, safe_storage_key):
     decrypted_pass = cipher.decrypt(encrypted_value)
     decrypted_pass = decrypted_pass.rstrip(b"\x04").decode("utf-8", "ignore")
     decrypted_pass = decrypted_pass.replace("\x08", "")  # Remove backspace characters
+    return decrypted_pass
+
+def decrypt_mac_chrome_secrets2(encrypted_value, safe_storage_key):
+    if not encrypted_value:
+        return ""  # Return empty string for empty encrypted value
+
+    iv = b' ' * 16
+    key = hashlib.pbkdf2_hmac('sha1', safe_storage_key, b'saltysalt', 1003)[:16]
+
+    cipher = AES.new(key, AES.MODE_CBC, IV=iv)
+
+    # Check and remove version tag
+    if encrypted_value[:3] == b'v10':
+        encrypted_payload = encrypted_value[3:]
+    else:
+        raise ValueError("Invalid version tag")
+
+    decrypted_pass = cipher.decrypt(encrypted_payload)
+
+    # Remove PKCS7 padding
+    padding_length = decrypted_pass[-1]
+    padding_value = decrypted_pass[-padding_length:]
+
+    if padding_length > 0 and all(value == padding_length for value in padding_value):
+        decrypted_pass = decrypted_pass[:-padding_length]
+    else:
+        raise ValueError("Invalid padding")
+
+    decrypted_pass = decrypted_pass.decode("utf-8", "ignore")
+
     return decrypted_pass
 
 def get_datetime(timestamp, browser):
@@ -564,7 +594,7 @@ def process_passwords(safe_storage_key, login_data):
             if user == "" or encrypted_pass == "":
                 continue
             else:
-                decrypted_pass = decrypt_mac_chrome_password(encrypted_pass, safe_storage_key)
+                decrypted_pass = decrypt_mac_chrome_secrets(encrypted_pass, safe_storage_key)
                 url_user_pass_decrypted = (
                     url.encode('ascii', 'ignore'),
                     user.encode('ascii', 'ignore'),
@@ -598,11 +628,10 @@ def process_cookies(db_path, browser):
                 cookie = {}
                 host, name, encrypted_value, path, expires, is_secure, is_httponly, has_expires, is_persistent, priority = row
                 expires = get_datetime(expires, browser)
-
-                decrypted_value = decrypt_mac_chrome_password(encrypted_value, safe_storage_key)
-
+                #print("encrypted_value:",encrypted_value)
+                decrypted_value = decrypt_mac_chrome_secrets2(encrypted_value, safe_storage_key)
                 cookie['name'] = name
-                cookie['value'] = encrypted_value
+                cookie['encrypted_value'] = decrypted_value
                 cookie['path'] = path
                 cookie['expires'] = str(expires)
                 cookie['is_secure'] = bool(is_secure)
@@ -841,23 +870,36 @@ def print_colored_output(line):
     print(line)
 
 def print_cookies_table(cookies_dict, browser):
-    header = (Fore.GREEN + "Host", "Cookie Name", "Cookie Value", "Path", "Expires", "Is Secure", "Is HTTP Only", "Has Expires", "Is Persistent", "Priority" + Style.RESET_ALL)
+    header = (
+        Fore.GREEN + "Host",
+        "Cookie Name",
+        "Cookie Value",
+        "Path",
+        "Expires",
+        "Is Secure",
+        "Is HTTP Only",
+        "Has Expires",
+        "Is Persistent",
+        "Priority" + Style.RESET_ALL
+    )
     print(f"{header[0]:<20} {header[1]:<30} {header[2]:<30} {header[3]:<20} {header[4]:<20} {header[5]:<12} {header[6]:<14} {header[7]:<12} {header[8]:<15} {header[9]:<10}")
     print("=" * 160)
 
     for host, cookies in cookies_dict.items():
         print(f"{Fore.RED}Domain: {host}{Style.RESET_ALL}\n")
         for cookie in cookies:
-            is_secure = "Yes" if cookie['is_secure'] else "No"
-            is_httponly = "Yes" if cookie['is_httponly'] else "No"
-            has_expires = "Yes" if cookie['has_expires'] else "No"
-            is_persistent = "Yes" if cookie['is_persistent'] else "No"
+            is_secure = Fore.GREEN + "Yes" + Style.RESET_ALL if cookie['is_secure'] else Fore.RED + "No" + Style.RESET_ALL
+            is_httponly = Fore.GREEN + "Yes" + Style.RESET_ALL if cookie['is_httponly'] else Fore.RED + "No" + Style.RESET_ALL
+            has_expires = Fore.GREEN + "Yes" + Style.RESET_ALL if cookie['has_expires'] else Fore.RED + "No" + Style.RESET_ALL
+            is_persistent = Fore.GREEN + "Yes" + Style.RESET_ALL if cookie['is_persistent'] else Fore.RED + "No" + Style.RESET_ALL
             priority = cookie.get('priority', '')
 
             if browser == 'chrome' or browser == 'edge' or browser == 'safari':
-                print(f"{host:<20} {cookie['name']:<30} {cookie['value']:<{len(header[2])}} {cookie['path']:<20} {cookie['expires']:<20} {is_secure:<12} {is_httponly:<14} {has_expires:<12} {is_persistent:<15} {priority:<10}")
+                cookie_value = Fore.GREEN + cookie['encrypted_value'] + Style.RESET_ALL
+                print(f"{host:<20} {cookie['name']:<30} {cookie_value:<{len(header[2])}} {cookie['path']:<20} {cookie['expires']:<20} {is_secure:<12} {is_httponly:<14} {has_expires:<12} {is_persistent:<15} {priority:<10}")
             elif browser == 'firefox':
-                print(f"{host:<20} {cookie['name']:<30} {cookie['value']:<{len(header[2])}} {cookie['path']:<20} {cookie['expires']:<20} {is_secure:<12} {is_httponly:<14} {has_expires:<12} {is_persistent:<15}")
+                cookie_value = Fore.GREEN + cookie['encrypted_value'] + Style.RESET_ALL
+                print(f"{host:<20} {cookie['name']:<30} {cookie_value:<{len(header[2])}} {cookie['path']:<20} {cookie['expires']:<20} {is_secure:<12} {is_httponly:<14} {has_expires:<12} {is_persistent:<15}")
         print("\n")
 
 def print_help():
