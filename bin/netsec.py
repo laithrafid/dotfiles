@@ -50,6 +50,7 @@ import shutil
 import readline  # Added readline module for arrow key support
 import threading
 import datetime
+import struct
 import colorama
 from colorama import init, Fore, Back, Style
 from prettytable import PrettyTable
@@ -506,14 +507,15 @@ def create_colored_table():
     table.format = True
     return table
 
-def get_safe_storage_key():
-    cmd = [
-        "security",
-        "find-generic-password",
-        "-ga",
-        "Chrome",
-        "-w"
-    ]
+def get_safe_storage_key(target):
+    if "chrome" in target or 'firefox' in target:
+        cmd = [
+            "security",
+            "find-generic-password",
+            "-ga",
+            "{target}",
+            "-w"
+        ]
     try:
         output = subprocess.check_output(cmd, stderr=subprocess.DEVNULL)
         safe_storage_key = output.strip()
@@ -562,17 +564,17 @@ def decrypt_mac_chrome_secrets2(encrypted_value, safe_storage_key):
 
     return decrypted_pass
 
-def get_datetime(timestamp, browser):
-    if browser == 'chrome' or browser == 'edge':
+def get_datetime(timestamp, target):
+    if target == 'chrome' or target == 'edge':
         epoch_start = 11644473600000000
         delta = int(timestamp) - epoch_start
         timestamp_sec = delta // 1000000
-    elif browser == 'firefox':
+    elif target == 'firefox':
         timestamp_sec = int(timestamp)
-    elif browser == 'safari':
+    elif target == 'safari':
         timestamp_sec = int(timestamp) + 978307200
     else:
-        raise ValueError("Unsupported browser")
+        raise ValueError("Unsupported target")
 
     # Convert timestamp to date and time format
     timestamp_dt = datetime.fromtimestamp(timestamp_sec)
@@ -609,17 +611,18 @@ def process_passwords(safe_storage_key, login_data):
 
     return decrypted_list
 
-def process_cookies(db_path, browser):
+def process_cookies(db_path, target):
     cookies_dict = {}
     conn = None
+    print_message("info", db_path)
     try:
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
-        if browser == 'chrome':
-            safe_storage_key = get_safe_storage_key()
+        if target == 'chrome' or target == 'firefox':
+            safe_storage_key = get_safe_storage_key(target)
             if safe_storage_key is None:
-                raise ValueError("Failed to retrieve Chrome Safe Storage Key")
+                raise ValueError(f"Failed to retrieve {target} Safe Storage Key")
 
             cursor.execute("SELECT host_key, name, encrypted_value, path, expires_utc, is_secure, is_httponly, has_expires, is_persistent, priority FROM cookies")
             rows = cursor.fetchall()
@@ -627,7 +630,7 @@ def process_cookies(db_path, browser):
             for row in rows:
                 cookie = {}
                 host, name, encrypted_value, path, expires, is_secure, is_httponly, has_expires, is_persistent, priority = row
-                expires = get_datetime(expires, browser)
+                expires = get_datetime(expires, target)
                 #print("encrypted_value:",encrypted_value)
                 decrypted_value = decrypt_mac_chrome_secrets2(encrypted_value, safe_storage_key)
                 cookie['name'] = name
@@ -643,7 +646,9 @@ def process_cookies(db_path, browser):
                     cookies_dict[host] = []
                 cookies_dict[host].append(cookie)
 
-        # Handle other browsers similarly
+        elif target == 'safari':
+            cookies_dict = parse_binary_cookies(db_path)
+            
 
     except sqlite3.Error as e:
         print("SQLite error:", e)
@@ -652,16 +657,51 @@ def process_cookies(db_path, browser):
             conn.close()
     return cookies_dict
 
-def get_cookies(browser):
+def parse_binary_cookies(db_path):
+    cookies = []
+    with open(db_path, "rb") as f:
+        data = f.read()
+        buffer_size = 11000
+        while len(data) > 0:
+            offset = 0
+            while offset < len(data) and len(data) - offset >= buffer_size:
+                version, url_offset, name_offset, path_offset, value_offset, comment_offset, comment_url_offset, flags, creation, expiration = struct.unpack_from(
+                    "!iIIIIiIiII", data, offset
+                )
+                url = data[url_offset : url_offset + 255]
+                name = data[name_offset : name_offset + 255]
+                path = data[path_offset : path_offset + 255]
+                value = data[value_offset : value_offset + 255]
+                comment = data[comment_offset : comment_offset + 255] if comment_offset > 0 else None
+                comment_url = data[comment_url_offset : comment_url_offset + 255] if comment_url_offset > 0 else None
+                cookie = {
+                    "version": version,
+                    "url": url,
+                    "name": name,
+                    "path": path,
+                    "value": value,
+                    "comment": comment,
+                    "comment_url": comment_url,
+                    "flags": flags,
+                    "creation": creation,
+                    "expiration": expiration,
+                }
+                cookies.append(cookie)
+                offset += buffer_size
+            data = data[offset:]
+    return cookies
+
+
+def get_cookies(target):
     # Determine the user's operating system
     operating_system = os.name
 
     if operating_system == 'posix':  # macOS or Linux
-        if browser == 'chrome':
+        if target == 'chrome':
             profile_path = os.path.expanduser("~/Library/Application Support/Google/Chrome/Default")
             db_path = os.path.join(profile_path, "Cookies")
             filename = "Cookies.db"
-        elif browser == 'firefox':
+        elif target == 'firefox':
             profile_path = os.path.expanduser("~/.mozilla/firefox")
             profile_dir = None
             for directory in os.listdir(profile_path):
@@ -672,22 +712,23 @@ def get_cookies(browser):
                 raise FileNotFoundError("Firefox profile directory not found")
             db_path = os.path.join(profile_path, profile_dir, "cookies.sqlite")
             filename = "cookies.sqlite"
-        elif browser == 'safari':
-            profile_path = os.path.expanduser("~/Library/Cookies")
+        elif target == 'safari':
+            profile_path = os.path.expanduser("~/Library/Containers/com.apple.Safari/Data/Library/Cookies/")
             db_path = os.path.join(profile_path, "Cookies.binarycookies")
             filename = "Cookies.binarycookies"
-        elif browser == 'edge':
+
+        elif target == 'edge':
             profile_path = os.path.expanduser("~/Library/Application Support/Microsoft Edge")
             db_path = os.path.join(profile_path, "Cookies")
             filename = "Cookies"
         else:
-            raise ValueError("Unsupported browser")
+            raise ValueError("Unsupported target")
     elif operating_system == 'nt':  # Windows
-        if browser == 'chrome':
+        if target == 'chrome':
             profile_path = os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\User Data\Default")
             db_path = os.path.join(profile_path, "Cookies")
             filename = "Cookies.db"
-        elif browser == 'firefox':
+        elif target == 'firefox':
             profile_path = os.path.expandvars(r"%APPDATA%\Mozilla\Firefox\Profiles")
             profile_dir = None
             for directory in os.listdir(profile_path):
@@ -698,14 +739,14 @@ def get_cookies(browser):
                 raise FileNotFoundError("Firefox profile directory not found")
             db_path = os.path.join(profile_path, profile_dir, "cookies.sqlite")
             filename = "cookies.sqlite"
-        elif browser == 'safari':
+        elif target == 'safari':
             raise OSError("Safari is not supported on Windows")
-        elif browser == 'edge':
+        elif target == 'edge':
             profile_path = os.path.expandvars(r"%LOCALAPPDATA%\Microsoft\Edge\User Data\Default")
             db_path = os.path.join(profile_path, "Cookies")
             filename = "Cookies"
         else:
-            raise ValueError("Unsupported browser")
+            raise ValueError("Unsupported target")
     else:
         raise OSError("Unsupported operating system")
 
@@ -713,6 +754,74 @@ def get_cookies(browser):
     shutil.copyfile(db_path, filename)
 
     return filename
+
+def get_login_data(target):
+    # Determine the user's operating system
+    operating_system = os.name
+
+    if operating_system == 'posix':  # macOS or Linux
+        if target == 'chrome':
+            profile_path = os.path.expanduser("~/Library/Application Support/Google/Chrome/Default")
+            login_data = [
+                os.path.join(profile_path, "Login Data"),
+                os.path.join(profile_path, "Login Data For Account")
+            ]
+        elif target == 'firefox':
+            profile_path = os.path.expanduser("~/.mozilla/firefox")
+            profile_dir = None
+            for directory in os.listdir(profile_path):
+                if directory.endswith('.default-release') or directory.endswith('.default'):
+                    profile_dir = directory
+                    break
+            if profile_dir is None:
+                raise FileNotFoundError("Firefox profile directory not found")
+            login_data = [
+                os.path.join(profile_path, profile_dir, "logins.json")
+            ]
+        elif target == 'safari':
+            profile_path = os.path.expanduser("~/Library/Safari")
+            login_data = [
+                os.path.join(profile_path, "AutoFillPasswords.plist")
+            ]
+        elif target == 'edge':
+            profile_path = os.path.expanduser("~/Library/Application Support/Microsoft Edge")
+            login_data = [
+                os.path.join(profile_path, "Web Data")
+            ]
+        else:
+            raise ValueError("Unsupported target")
+    elif operating_system == 'nt':  # Windows
+        if target == 'chrome':
+            profile_path = os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\User Data\Default")
+            login_data = [
+                os.path.join(profile_path, "Login Data"),
+                os.path.join(profile_path, "Login Data For Account")
+            ]
+        elif target == 'firefox':
+            profile_path = os.path.expandvars(r"%APPDATA%\Mozilla\Firefox\Profiles")
+            profile_dir = None
+            for directory in os.listdir(profile_path):
+                if directory.endswith('.default-release') or directory.endswith('.default'):
+                    profile_dir = directory
+                    break
+            if profile_dir is None:
+                raise FileNotFoundError("Firefox profile directory not found")
+            login_data = [
+                os.path.join(profile_path, profile_dir, "logins.json")
+            ]
+        elif target == 'safari':
+            raise OSError("Safari is not supported on Windows")
+        elif target == 'edge':
+            profile_path = os.path.expandvars(r"%LOCALAPPDATA%\Microsoft\Edge\User Data\Default")
+            login_data = [
+                os.path.join(profile_path, "Web Data")
+            ]
+        else:
+            raise ValueError("Unsupported target")
+    else:
+        raise OSError("Unsupported operating system")
+
+    return login_data
 
 #################### Commnads and Subprocess to Run:
 
@@ -772,7 +881,7 @@ def check_open_ports_nmap(target, ports=None):
 
     return open_ports
 
-def dump_browser_sec(target,options):
+def dump_target_sec(target,options):
     # Main code
     if "chrome" in target:
         if "cookies" in options or "all" in options:
@@ -781,12 +890,8 @@ def dump_browser_sec(target,options):
             print_cookies_table(cookies_dict,target)
         
         elif "passwords" in options or "all" in options:
-            profile_path = os.path.expanduser("~/Library/Application Support/Google/Chrome/Default")
-            login_data = [
-            os.path.join(profile_path, "Login Data"),
-            os.path.join(profile_path, "Login Data For Account")
-            ]
-            safe_storage_key = get_safe_storage_key()
+            login_data = get_login_data(target)
+            safe_storage_key = get_safe_storage_key(target)
             if safe_storage_key is None:
                 sys.exit()
 
@@ -818,21 +923,21 @@ def dump_browser_sec(target,options):
             cookies_dict =  process_cookies(cookies_db, target)
             print_cookies_table(cookies_dict,target)
         else:
-            print_message("error",f"no code logic for this target browser {target} yet")
+            print_message("error",f"no code logic for this target target {target} yet")
     elif "edge" in target:
         if "cookies" in options or "all" in options:
             cookies_db = get_cookies(target)
             cookies_dict =  process_cookies(cookies_db, target)
             print_cookies_table(cookies_dict,target)
         else:
-            print_message("error",f"no code logic for this target browser {target} yet")
+            print_message("error",f"no code logic for this target target {target} yet")
     elif "safari" in target:
         if "cookies" in options or "all" in options:
             cookies_db = get_cookies(target)
             cookies_dict =  process_cookies(cookies_db, target)
-            print_cookies_table(cookies_dict,target)
+            print(cookies_dict)
         else:
-            print_message("error",f"no code logic for this target browser {target} yet")
+            print_message("error",f"no code logic for this target target {target} yet")
     else: 
         print_message("error","Error please Enter a valid target")
 
@@ -869,7 +974,7 @@ def print_colored_output(line):
         line = " ".join(line_parts)
     print(line)
 
-def print_cookies_table(cookies_dict, browser):
+def print_cookies_table(cookies_dict, target):
     header = (
         Fore.GREEN + "Host",
         "Cookie Name",
@@ -884,7 +989,6 @@ def print_cookies_table(cookies_dict, browser):
     )
     print(f"{header[0]:<20} {header[1]:<30} {header[2]:<30} {header[3]:<20} {header[4]:<20} {header[5]:<12} {header[6]:<14} {header[7]:<12} {header[8]:<15} {header[9]:<10}")
     print("=" * 160)
-
     for host, cookies in cookies_dict.items():
         print(f"{Fore.RED}Domain: {host}{Style.RESET_ALL}\n")
         for cookie in cookies:
@@ -894,10 +998,10 @@ def print_cookies_table(cookies_dict, browser):
             is_persistent = Fore.GREEN + "Yes" + Style.RESET_ALL if cookie['is_persistent'] else Fore.RED + "No" + Style.RESET_ALL
             priority = cookie.get('priority', '')
 
-            if browser == 'chrome' or browser == 'edge' or browser == 'safari':
+            if target == 'chrome' or target == 'edge':
                 cookie_value = Fore.GREEN + cookie['encrypted_value'] + Style.RESET_ALL
                 print(f"{host:<20} {cookie['name']:<30} {cookie_value:<{len(header[2])}} {cookie['path']:<20} {cookie['expires']:<20} {is_secure:<12} {is_httponly:<14} {has_expires:<12} {is_persistent:<15} {priority:<10}")
-            elif browser == 'firefox':
+            elif target == 'firefox':
                 cookie_value = Fore.GREEN + cookie['encrypted_value'] + Style.RESET_ALL
                 print(f"{host:<20} {cookie['name']:<30} {cookie_value:<{len(header[2])}} {cookie['path']:<20} {cookie['expires']:<20} {is_secure:<12} {is_httponly:<14} {has_expires:<12} {is_persistent:<15}")
         print("\n")
@@ -912,7 +1016,7 @@ def print_help():
     print("  -ps, --portscan_scapy    Run ports scan using scapy with colorized output")
     print("  -pn, --portscan_nmap     Run ports scan using Nmap with colorized output")
     print("  -p , --ping              Run ping(4|6) with colorized output")
-    print("  -ds, --dump_browser_sec  Run functions to dump secrets from browsers")
+    print("  -ds, --dump_target_sec  Run functions to dump secrets from targets")
     print("  -h , --help              Show help")
     print_message("error", f"Arguments:\n")
     print("for option specific arguments use options -h")
@@ -990,14 +1094,14 @@ def print_help_p():
     print_help_ping6()
 
 def print_help_ds():
-    print(Fore.MAGENTA + "Usage:" + Style.RESET_ALL + " python netsec.py -ds, --dump_browser_sec "+ Fore.RED + "[options]" + Style.RESET_ALL  + Fore.GREEN +"[target]"+ Style.RESET_ALL +"\n")
+    print(Fore.MAGENTA + "Usage:" + Style.RESET_ALL + " python netsec.py -ds, --dump_target_sec "+ Fore.RED + "[options]" + Style.RESET_ALL  + Fore.GREEN +"[target]"+ Style.RESET_ALL +"\n")
     print(Fore.GREEN +"target:" + Style.RESET_ALL)
     print("chrome")
     print("safari")
     print("edge")
     print("firefox")
     print(Fore.RED + "options:" + Style.RESET_ALL)
-    print("all : will print all secrets (cookies and passwords) from browser")
+    print("all : will print all secrets (cookies and passwords) from target")
     print("cookies : will print table of cookies information grouped by domain like Host, Cookie Name, Cookie Value, Path, Expires,...etc ")
     print("passwords : will print a table of all Sites, Usernames, Passwords")
 
@@ -1014,7 +1118,6 @@ def print_colored_table_ports(open_ports):
     print(table)
 
 #################### Main Function:
-
 def main():
     colorama.init(autoreset=True)
     readline.parse_and_bind('"\e[A": previous-history')
@@ -1418,11 +1521,11 @@ def main():
                             sys.exit(0)
             pass    
 
-        elif option in ['-ds', '--dump_browser_sec']:
+        elif option in ['-ds', '--dump_target_sec']:
             if  "-h" in sys.argv[2:] :
                 print_help_ds()
             elif len(sys.argv) < 3:
-                print_message("info", f"No Target browser chosen (chrome, firefox, edge, safari) or Options(all, cookies, Passwords)")
+                print_message("info", f"No Target target chosen (chrome, firefox, edge, safari) or Options(all, cookies, Passwords)")
                 print_help_ds()
                 return
             elif len(sys.argv) >= 3:
@@ -1430,7 +1533,7 @@ def main():
                 options = sys.argv[2:-1]
                 if "firefox" in target or "safari" in target or "edge" in target or "chrome" in target:
                     if "all" in options or "passwords" in options or "cookies" in options:
-                        dump_browser_sec(target,options)
+                        dump_target_sec(target,options)
                     else:
                         print_message("error", "Enter a valid option")
                         print_help_ds()
